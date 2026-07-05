@@ -1,36 +1,124 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ShipCheck
+
+> Free visual regression testing tool — compare screenshots pixel by pixel.
+
+**Live:** [shipcheck.safdarali.in](https://shipcheck.safdarali.in)
+
+Built by [Safdar Ali](https://safdarali.in)
+
+## Features
+
+- **Upload mode** — Compare two PNG, JPEG, or WebP images (processed in-browser)
+- **URL mode** — Capture full-page screenshots with Playwright (desktop, tablet, mobile)
+- **Pixel diff engine** — Canvas-based comparison with configurable tolerance
+- **Multiple views** — Side-by-side, overlay, diff-only, and split slider
+- **Export** — Download diff PNG and JSON metadata reports
+- **SEO optimized** — Structured data, FAQ, sitemap, robots.txt
+- **Dark mode** — System, light, and dark themes
+- **Secure** — SSRF protection, rate limiting, input validation, no permanent storage
+
+## Tech Stack
+
+- Next.js 15 (App Router)
+- TypeScript
+- Tailwind CSS
+- Canvas API (client-side diff)
+- Playwright (URL screenshots)
+- Zod + React Hook Form
+- Vitest
 
 ## Getting Started
 
-First, run the development server:
-
 ```bash
+git clone <your-repo>
+cd shipcheck
+npm install
+npx playwright install chromium
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Scripts
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start development server |
+| `npm run build` | Production build |
+| `npm run start` | Start production server |
+| `npm run lint` | ESLint |
+| `npm run test` | Vitest unit tests |
+| `npm run format` | Prettier |
 
-## Learn More
+## Environment Variables
 
-To learn more about Next.js, take a look at the following resources:
+No required env vars for local development.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+For production on Vercel, Playwright needs the `@playwright/browser-chromium` or serverless-compatible setup. On Vercel, consider using `@sparticuz/chromium` for serverless Playwright.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Optional:
 
-## Deploy on Vercel
+```env
+# Analytics (auto-enabled via @vercel/analytics)
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Architecture
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```
+src/
+├── app/                  # Next.js routes, API, metadata
+├── components/
+│   ├── compare/          # Compare tool UI
+│   ├── layout/           # Header, footer, theme
+│   ├── marketing/        # Feature cards, use cases
+│   ├── seo/              # Structured data, FAQ
+│   └── ui/               # Reusable primitives
+├── lib/
+│   ├── compareImages.ts  # Canvas diff engine
+│   ├── security.ts       # SSRF + rate limiting
+│   └── validation.ts     # Zod schemas
+├── services/
+│   └── screenshot.ts     # Playwright capture
+└── types/
+    └── compare.ts        # Shared types
+```
+
+## Deployment
+
+Optimized for Vercel:
+
+1. Push to GitHub
+2. Import project in Vercel
+3. Set domain to `shipcheck.safdarali.in`
+4. Deploy
+
+For Playwright on Vercel serverless, install browsers in build step:
+
+```json
+"postinstall": "npx playwright install chromium"
+```
+
+## Security
+
+- Uploads processed client-side only
+- URL screenshots validated against SSRF (blocks localhost, private IPs)
+- Rate limiting on screenshot API
+- CSP and security headers via middleware
+- 10 MB upload limit with MIME validation
+
+## Roadmap
+
+- [ ] CI/CD GitHub Action integration
+- [ ] Batch URL comparison
+- [ ] Visual diff history (local storage)
+- [ ] AI-powered change summaries
+- [ ] Blog with MDX
+
+## License
+
+MIT
+
+## Contributing
+
+PRs welcome. Please run `npm run lint` and `npm run test` before submitting.
+# shipcheck

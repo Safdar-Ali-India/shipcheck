@@ -1,0 +1,20 @@
+# ShipCheck
+
+ShipCheck is a free visual regression testing tool by Safdar Ali.
+
+URL: https://shipcheck.safdarali.in
+
+## What it does
+
+- Compare two UI screenshots or webpage URLs pixel by pixel
+- Highlight visual differences in red
+- Show diff percentage and export PNG/JSON reports
+- Supports image upload (PNG, JPEG, WebP) and URL screenshot capture
+
+## Keywords
+
+visual regression testing free, compare screenshots online, ui diff checker
+
+## Author
+
+Safdar Ali — https://safdarali.in
