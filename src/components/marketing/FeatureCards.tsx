@@ -1,4 +1,4 @@
-import { Scan, Globe, Layout, Download } from "lucide-react";
+import { Scan, Globe, Layout, Download, Bot } from "lucide-react";
 import { FEATURE_CARDS, USE_CASES } from "@/lib/constants";
 
 const ICONS = {
@@ -6,13 +6,14 @@ const ICONS = {
   globe: Globe,
   layout: Layout,
   download: Download,
+  bot: Bot,
 } as const;
 
 export function FeatureCards() {
   return (
     <section className="mx-auto max-w-7xl px-4 py-8">
       <h2 className="text-center text-2xl font-bold text-zinc-900 dark:text-zinc-50">
-        Everything you need for visual regression testing
+        Bring your testing to another level
       </h2>
       <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {FEATURE_CARDS.map((feature) => {

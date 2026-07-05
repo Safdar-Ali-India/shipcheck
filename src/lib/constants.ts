@@ -2,52 +2,96 @@ export const SITE_URL = "https://shipcheck.safdarali.in";
 
 export const BRAND = {
   name: "ShipCheck",
-  tagline: "Free visual regression testing — compare screenshots pixel by pixel.",
+  tagline: "Free AI browser testing — catch bugs before customers do.",
   url: SITE_URL,
   author: "Safdar Ali",
   authorUrl: "https://safdarali.in",
 } as const;
 
 export const KEYWORDS = [
+  "ai browser testing free",
   "visual regression testing free",
   "compare screenshots online",
   "ui diff checker",
   "website screenshot comparison",
-  "visual diff tool",
-  "pixel comparison tool",
-  "image comparison online",
+  "plain english testing",
+  "no code testing tool",
   "shipcheck",
+] as const;
+
+export const HOW_IT_WORKS_STEPS = [
+  {
+    title: "Paste your URL",
+    description:
+      "Enter your staging or production URL. No SDK, no test scripts, no infrastructure to maintain.",
+  },
+  {
+    title: "Write tests in plain English",
+    description:
+      "Describe what to test in natural language. ShipCheck navigates pages, clicks buttons, fills forms, and verifies results.",
+  },
+  {
+    title: "Run a real browser",
+    description:
+      "A headless browser executes your flow on desktop, tablet, or mobile viewports with screenshots at every step.",
+  },
+  {
+    title: "Get a clear report",
+    description:
+      "Receive pass/fail verdicts, step-by-step logs, screenshots, and a JSON report you can share with your team.",
+  },
+] as const;
+
+export const EXAMPLE_TESTS = [
+  {
+    label: "Portfolio smoke test",
+    url: "https://safdarali.in",
+    instructions: `Verify page contains Safdar
+Take screenshot`,
+  },
+  {
+    label: "Google smoke test",
+    url: "https://www.google.com",
+    instructions: `Verify page contains Google
+Take screenshot`,
+  },
+  {
+    label: "Homepage smoke test",
+    url: "https://example.com",
+    instructions: "Verify page contains Example Domain\nTake screenshot",
+  },
 ] as const;
 
 export const FAQ_ITEMS = [
   {
     question: "Is ShipCheck free?",
     answer:
-      "Yes. ShipCheck is completely free with no signup, no watermarks, and no usage limits for standard comparisons.",
+      "Yes. ShipCheck is completely free with no signup, no watermarks, and no credit card required.",
   },
   {
-    question: "Are my images stored on a server?",
+    question: "How is this different from TesterArmy or Playwright?",
     answer:
-      "No. Image uploads are processed in your browser using the Canvas API. Screenshots from URLs are captured temporarily and never permanently stored.",
+      "ShipCheck is a free, no-login tool for quick browser checks and visual diffs. Describe tests in plain English, get screenshots and reports instantly. Playwright is a framework you code against; ShipCheck handles the browser run for you.",
   },
   {
-    question: "What image formats are supported?",
-    answer: "PNG, JPEG, and WebP are supported for uploads. URL mode captures full-page screenshots as PNG.",
-  },
-  {
-    question: "How does the pixel diff work?",
+    question: "Do I need to write code?",
     answer:
-      "ShipCheck compares images pixel by pixel using the Canvas API. Changed pixels are highlighted in red. You can adjust the tolerance threshold to ignore minor anti-aliasing differences.",
+      "No. Write instructions in plain English like 'Click Get started' or 'Verify page contains Pricing'. ShipCheck converts them into browser actions automatically.",
   },
   {
-    question: "Can I compare live website URLs?",
+    question: "Are my tests stored on a server?",
     answer:
-      "Yes. Paste two URLs and ShipCheck captures full-page screenshots at your chosen viewport (desktop, tablet, or mobile), then runs a visual diff automatically.",
+      "No. Test runs are ephemeral — results are returned to your browser and never permanently stored. Image uploads for visual diff are processed in-browser.",
   },
   {
-    question: "What is visual regression testing?",
+    question: "Can I compare screenshots too?",
     answer:
-      "Visual regression testing detects unintended UI changes by comparing screenshots before and after a code deploy. ShipCheck makes this fast and accessible without expensive tooling.",
+      "Yes. ShipCheck also includes a pixel-perfect visual diff tool — upload two images or paste two URLs to detect UI changes.",
+  },
+  {
+    question: "What sites can I test?",
+    answer:
+      "Any public HTTP/HTTPS website. Private IPs, localhost, and internal hostnames are blocked for security.",
   },
 ] as const;
 
@@ -73,35 +117,44 @@ export const DEFAULT_THRESHOLD = 0.1;
 
 export const FEATURE_CARDS = [
   {
-    title: "Pixel-perfect diff",
+    title: "Plain English tests",
     description:
-      "Canvas-based comparison highlights every changed pixel in bright red with a precise difference percentage.",
-    icon: "scan" as const,
+      "Describe flows in natural language. No test scripts, no selectors, no maintenance overhead.",
+    icon: "bot" as const,
   },
   {
-    title: "URL or upload",
+    title: "Real browser agent",
     description:
-      "Compare two uploaded images or paste live URLs — ShipCheck captures full-page screenshots automatically.",
+      "Playwright launches a real browser, clicks, types, and validates like a human user would.",
     icon: "globe" as const,
   },
   {
-    title: "Multiple views",
+    title: "Visual diff engine",
     description:
-      "Side-by-side, overlay, diff-only, and split slider views with zoom, pan, and fullscreen support.",
-    icon: "layout" as const,
+      "Compare screenshots pixel-by-pixel with side-by-side, overlay, diff-only, and split views.",
+    icon: "scan" as const,
   },
   {
-    title: "Export reports",
+    title: "Instant reports",
     description:
-      "Download diff images as PNG and metadata as JSON — ready for CI pipelines or design reviews.",
+      "Screenshots, step logs, pass/fail verdicts, and JSON exports — ready for PR reviews.",
     icon: "download" as const,
   },
 ] as const;
 
 export const USE_CASES = [
-  "Catch unintended CSS changes before production deploys",
-  "Compare staging vs production pages side by side",
-  "Review design handoff accuracy against Figma exports",
-  "Validate responsive layouts across desktop, tablet, and mobile",
-  "Document visual changes in pull request reviews",
+  "Smoke-test critical user flows before every deploy",
+  "Verify staging matches production behavior",
+  "Catch broken buttons, forms, and navigation paths",
+  "Compare UI screenshots after CSS or layout changes",
+  "Share bug reports with screenshots — no account needed",
+] as const;
+
+export const STACK_ITEMS = [
+  "Next.js",
+  "Playwright",
+  "TypeScript",
+  "Tailwind",
+  "Canvas API",
+  "Vercel",
 ] as const;

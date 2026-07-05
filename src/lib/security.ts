@@ -33,7 +33,12 @@ export function assertSafeUrl(rawUrl: string): URL {
   const hostname = parsed.hostname.toLowerCase();
 
   if (BLOCKED_HOSTNAMES.has(hostname) || isPrivateIp(hostname)) {
-    throw new Error("URL points to a blocked or private address");
+    const allowLocal =
+      process.env.NODE_ENV === "development" &&
+      (hostname === "localhost" || hostname === "127.0.0.1");
+    if (!allowLocal) {
+      throw new Error("URL points to a blocked or private address");
+    }
   }
 
   if (hostname.endsWith(".local") || hostname.endsWith(".internal")) {

@@ -25,8 +25,26 @@ export const compareUrlsSchema = z.object({
   viewport: z.enum(["desktop", "tablet", "mobile"]).default("desktop"),
 });
 
+export const browserTestRequestSchema = z
+  .object({
+    url: urlSchema.optional(),
+    instructions: z.string().trim().max(4000).optional(),
+    viewport: z.enum(["desktop", "tablet", "mobile"]).default("desktop"),
+    preset: z.enum(["portfolio-full", "auto"]).optional(),
+    mode: z.enum(["auto"]).optional(),
+  })
+  .refine(
+    (data) => {
+      if (data.preset === "portfolio-full") return true;
+      if (data.preset === "auto" || data.mode === "auto") return Boolean(data.url);
+      return Boolean(data.url) && Boolean(data.instructions) && data.instructions!.length >= 3;
+    },
+    { message: "Provide a URL (for auto test) or URL + instructions, or choose a preset." },
+  );
+
 export type ScreenshotRequest = z.infer<typeof screenshotRequestSchema>;
 export type CompareUrlsInput = z.infer<typeof compareUrlsSchema>;
+export type BrowserTestRequest = z.infer<typeof browserTestRequestSchema>;
 
 export function validateImageFile(file: File): string | null {
   const allowed = ["image/png", "image/jpeg", "image/webp"];

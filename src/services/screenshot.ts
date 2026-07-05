@@ -1,19 +1,6 @@
-import { chromium, type Browser } from "playwright";
 import { getViewportConfig } from "@/lib/validation";
 import type { ViewportId } from "@/lib/constants";
-
-let browserInstance: Browser | null = null;
-
-async function getBrowser(): Promise<Browser> {
-  if (browserInstance?.isConnected()) {
-    return browserInstance;
-  }
-  browserInstance = await chromium.launch({
-    headless: true,
-    args: ["--no-sandbox", "--disable-setuid-sandbox"],
-  });
-  return browserInstance;
-}
+import { BROWSER_USER_AGENT, getBrowser } from "@/services/browser";
 
 export async function captureScreenshot(
   url: string,
@@ -24,8 +11,7 @@ export async function captureScreenshot(
   const context = await browser.newContext({
     viewport: { width: config.width, height: config.height },
     deviceScaleFactor: config.deviceScaleFactor,
-    userAgent:
-      "ShipCheck/1.0 (+https://shipcheck.safdarali.in; visual-regression-tool)",
+    userAgent: BROWSER_USER_AGENT,
   });
 
   const page = await context.newPage();
@@ -41,9 +27,4 @@ export async function captureScreenshot(
   }
 }
 
-export async function closeBrowser() {
-  if (browserInstance) {
-    await browserInstance.close();
-    browserInstance = null;
-  }
-}
+export { closeBrowser } from "@/services/browser";

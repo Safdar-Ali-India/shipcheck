@@ -5,39 +5,39 @@ export function SeoContent() {
     <div className="space-y-10 p-6 text-zinc-600 dark:text-zinc-400">
       <article>
         <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-50">
-          How to compare screenshots with ShipCheck
+          How to test your website with ShipCheck
         </h2>
         <ol className="mt-4 list-decimal space-y-3 pl-5 text-base leading-relaxed">
           <li>
-            <strong>Choose your input mode</strong> — upload two PNG, JPEG, or WebP
-            images, or paste two live webpage URLs to capture screenshots automatically.
+            <strong>Paste your URL</strong> — enter any public staging or production
+            website. ShipCheck opens it in a real headless browser.
           </li>
           <li>
-            <strong>Configure comparison</strong> — select a viewport for URL mode
-            (desktop, tablet, or mobile) and adjust the tolerance threshold to ignore
-            minor anti-aliasing differences.
+            <strong>Write instructions in plain English</strong> — describe clicks,
+            form fills, and checks like &quot;Click Get started&quot; or &quot;Verify page
+            contains Pricing&quot;.
           </li>
           <li>
-            <strong>Run the visual diff</strong> — ShipCheck compares images
-            pixel-by-pixel using the Canvas API and highlights changed areas in red.
+            <strong>Run the test</strong> — ShipCheck plans and executes browser steps,
+            capturing screenshots along the way.
           </li>
           <li>
-            <strong>Review and export</strong> — switch between side-by-side, overlay,
-            diff-only, and split views. Download the diff as PNG or a JSON report.
+            <strong>Review the report</strong> — get a pass/fail verdict, step timeline,
+            screenshots, and a downloadable JSON report.
           </li>
         </ol>
       </article>
 
       <article>
         <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-50">
-          Why use ShipCheck for visual regression testing?
+          Why use ShipCheck?
         </h2>
         <ul className="mt-4 list-disc space-y-2 pl-5 text-base leading-relaxed">
-          <li>100% free — no signup, no watermarks, no usage caps for standard comparisons</li>
-          <li>Uploads processed in-browser — your images never leave your device</li>
-          <li>URL mode captures full-page screenshots with Playwright</li>
-          <li>Precise diff percentage and changed pixel count for CI-friendly reports</li>
-          <li>Works on desktop, tablet, and mobile viewports</li>
+          <li>100% free — no signup, no credit card, no watermarks</li>
+          <li>Plain English tests — no Playwright scripts to write or maintain</li>
+          <li>Real browser automation with Playwright</li>
+          <li>Visual diff tool for pixel-perfect screenshot comparison</li>
+          <li>Desktop, tablet, and mobile viewports</li>
         </ul>
       </article>
 

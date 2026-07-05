@@ -7,7 +7,7 @@ export function StructuredData() {
     name: BRAND.name,
     url: SITE_URL,
     description:
-      "Free visual regression testing tool. Compare website screenshots or images online with pixel-perfect diff reports.",
+      "Free AI browser testing tool. Test websites in plain English, get screenshots and bug reports. Includes pixel-perfect visual diff. No signup required.",
     applicationCategory: "DeveloperApplication",
     operatingSystem: "Any",
     offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },

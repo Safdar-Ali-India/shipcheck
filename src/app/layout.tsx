@@ -13,9 +13,9 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "ShipCheck — Free Visual Regression Testing Tool",
+  title: "ShipCheck — Free AI Browser Testing Tool",
   description:
-    "Compare website screenshots or images online using pixel-perfect visual regression testing. Upload images or compare live URLs with instant diff reports. No signup required.",
+    "Test your website with AI in plain English. ShipCheck runs real browser checks, captures screenshots, and returns pass/fail bug reports. Free visual diff included. No signup.",
   keywords: [...KEYWORDS],
   metadataBase: new URL(SITE_URL),
   alternates: {
@@ -48,7 +48,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={inter.variable} suppressHydrationWarning>
-      <body className="min-h-screen antialiased">
+      <body className="min-h-screen antialiased" suppressHydrationWarning>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <StructuredData />
           {children}

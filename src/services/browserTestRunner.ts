@@ -1,0 +1,349 @@
+import fs from "fs/promises";
+import path from "path";
+import type { Page } from "playwright";
+import { getViewportConfig } from "@/lib/validation";
+import type { ViewportId } from "@/lib/constants";
+import { cleanupOldReports, saveReportVideo } from "@/lib/reportStorage";
+import { BROWSER_USER_AGENT, getBrowser } from "@/services/browser";
+import { describeAction } from "@/services/testPlanner";
+import type {
+  BrowserTestAction,
+  BrowserTestReport,
+  BrowserTestStepResult,
+  ConsoleLogEntry,
+  NetworkLogEntry,
+  TestStepKind,
+} from "@/types/browserTest";
+
+const STEP_TIMEOUT = 20_000;
+const TOTAL_TIMEOUT = 180_000;
+
+function actionKind(action: BrowserTestAction): TestStepKind {
+  switch (action.type) {
+    case "assertVisible":
+    case "assertText":
+      return "assert";
+    case "screenshot":
+      return "screenshot";
+    default:
+      return "action";
+  }
+}
+
+function generateTitle(url: string, instructions: string): string {
+  try {
+    const host = new URL(url).hostname.replace(/^www\./, "");
+    const firstLine = instructions.split(/\n|;/)[0]?.trim() ?? "automated check";
+    return `${host} smoke test — ${firstLine.toLowerCase()}`;
+  } catch {
+    return "Browser smoke test";
+  }
+}
+
+async function dismissConsentIfPresent(page: Page): Promise<void> {
+  const candidates = [
+    page.getByRole("button", { name: /accept all/i }),
+    page.getByRole("button", { name: /i agree/i }),
+    page.getByRole("button", { name: /reject all/i }),
+  ];
+
+  for (const locator of candidates) {
+    if ((await locator.count()) > 0) {
+      await locator.first().click({ timeout: 2000 }).catch(() => undefined);
+      await page.waitForTimeout(400);
+      return;
+    }
+  }
+}
+
+async function screenshotToDataUrl(page: Page): Promise<string> {
+  const buffer = await page.screenshot({ fullPage: false, type: "png" });
+  return `data:image/png;base64,${Buffer.from(buffer).toString("base64")}`;
+}
+
+async function resolveLocator(page: Page, target: string) {
+  if (/^search$/i.test(target.trim())) {
+    const search = page.locator('textarea[name="q"], input[name="q"]');
+    if ((await search.count()) > 0) return search.first();
+  }
+
+  const strategies = [
+    () => page.getByRole("combobox", { name: new RegExp(target, "i") }),
+    () => page.getByRole("button", { name: new RegExp(target, "i") }),
+    () => page.getByRole("link", { name: new RegExp(target, "i") }),
+    () => page.getByLabel(new RegExp(target, "i")),
+    () => page.getByPlaceholder(new RegExp(target, "i")),
+    () => page.getByText(new RegExp(target, "i")),
+  ];
+
+  for (const strategy of strategies) {
+    const locator = strategy();
+    if ((await locator.count()) > 0) {
+      return locator.first();
+    }
+  }
+
+  throw new Error(`Could not find "${target}" on the page`);
+}
+
+async function executeAction(page: Page, action: BrowserTestAction): Promise<string> {
+  switch (action.type) {
+    case "click": {
+      const locator = await resolveLocator(page, action.target);
+      await locator.click({ timeout: STEP_TIMEOUT });
+      return `Clicked "${action.target}"`;
+    }
+    case "fill": {
+      const locator = await resolveLocator(page, action.target);
+      await locator.fill(action.value, { timeout: STEP_TIMEOUT });
+      return `Filled "${action.target}"`;
+    }
+    case "assertVisible": {
+      const locator = await resolveLocator(page, action.target);
+      await locator.waitFor({ state: "visible", timeout: STEP_TIMEOUT });
+      return `"${action.target}" is visible`;
+    }
+    case "assertText": {
+      const regex = new RegExp(action.text, "i");
+      const checkFrame = async (frame: Page | import("playwright").Frame) => {
+        const text = await frame.locator("body").innerText().catch(() => "");
+        return regex.test(text);
+      };
+      if (await checkFrame(page)) {
+        return `Found text "${action.text}"`;
+      }
+      for (const frame of page.frames()) {
+        if (frame !== page.mainFrame() && (await checkFrame(frame))) {
+          return `Found text "${action.text}"`;
+        }
+      }
+      throw new Error(`Text "${action.text}" not found on page`);
+    }
+    case "screenshot":
+      return "Screenshot captured";
+    case "wait":
+      await page.waitForTimeout(action.ms);
+      return `Waited ${action.ms}ms`;
+    case "press":
+      await page.keyboard.press(action.key);
+      return `Pressed ${action.key}`;
+    case "scroll": {
+      const locator = await resolveLocator(page, action.target);
+      await locator.scrollIntoViewIfNeeded({ timeout: STEP_TIMEOUT });
+      await page.waitForTimeout(400);
+      return `Scrolled to "${action.target}"`;
+    }
+    case "submit": {
+      const label = action.target ?? "Send message";
+      const locator = await resolveLocator(page, label);
+      await locator.click({ timeout: STEP_TIMEOUT });
+      await page.waitForTimeout(800);
+      return `Submitted form via "${label}"`;
+    }
+  }
+}
+
+function generateSummary(steps: BrowserTestStepResult[], url: string): string {
+  const failed = steps.filter((s) => s.status === "fail");
+  if (failed.length === 0) {
+    return `All ${steps.length} steps passed on ${url}. No broken flows detected in this run.`;
+  }
+  const first = failed[0];
+  return `Test failed at step "${first.instruction}": ${first.message}. ${failed.length} of ${steps.length} steps failed.`;
+}
+
+export async function runBrowserTest(options: {
+  url: string;
+  instructions: string;
+  viewport: ViewportId;
+  steps: BrowserTestAction[];
+  title?: string;
+}): Promise<BrowserTestReport> {
+  const reportId = crypto.randomUUID();
+  const startedAt = new Date().toISOString();
+  const testStart = Date.now();
+  const config = getViewportConfig(options.viewport);
+  const browser = await getBrowser();
+  const videoDir = path.join(process.cwd(), ".tmp", "shipcheck-videos", reportId);
+  await fs.mkdir(videoDir, { recursive: true });
+
+  void cleanupOldReports();
+
+  const context = await browser.newContext({
+    viewport: { width: config.width, height: config.height },
+    deviceScaleFactor: config.deviceScaleFactor,
+    userAgent: BROWSER_USER_AGENT,
+    recordVideo: {
+      dir: videoDir,
+      size: { width: config.width, height: config.height },
+    },
+  });
+
+  const page = await context.newPage();
+  page.setDefaultTimeout(STEP_TIMEOUT);
+
+  const consoleLogs: ConsoleLogEntry[] = [];
+  const networkLogs: NetworkLogEntry[] = [];
+  const stepResults: BrowserTestStepResult[] = [];
+  let finalScreenshot: string | undefined;
+  let overallStatus: "pass" | "fail" = "pass";
+  let hasVideo = false;
+  const deadline = Date.now() + TOTAL_TIMEOUT;
+
+  page.on("console", (msg) => {
+    consoleLogs.push({
+      type: msg.type(),
+      text: msg.text(),
+      timestampMs: Date.now() - testStart,
+    });
+  });
+
+  const requestTimings = new Map<string, number>();
+
+  page.on("request", (request) => {
+    requestTimings.set(request.url(), Date.now());
+  });
+
+  page.on("response", (response) => {
+    const url = response.url();
+    const started = requestTimings.get(url) ?? Date.now();
+    const pathname = (() => {
+      try {
+        return new URL(url).pathname.split("/").filter(Boolean).pop() ?? "root";
+      } catch {
+        return "request";
+      }
+    })();
+
+    networkLogs.push({
+      name: pathname,
+      method: response.request().method(),
+      url,
+      status: response.status(),
+      resourceType: response.request().resourceType(),
+      durationMs: Math.max(0, Date.now() - started),
+      timestampMs: Date.now() - testStart,
+    });
+  });
+
+  const videoHandle = page.video();
+
+  try {
+    const navStart = Date.now();
+    await page.goto(options.url, { waitUntil: "domcontentloaded", timeout: 30_000 });
+    await dismissConsentIfPresent(page);
+    await page.waitForTimeout(600);
+
+    stepResults.push({
+      id: "step-0",
+      instruction: `Navigate to ${options.url}`,
+      action: { type: "screenshot", label: "Navigate" },
+      kind: "navigate",
+      status: "pass",
+      message: "Page loaded successfully",
+      durationMs: Date.now() - navStart,
+      videoTimestampMs: 0,
+      screenshot: await screenshotToDataUrl(page),
+    });
+
+    for (let i = 0; i < options.steps.length; i++) {
+      if (Date.now() > deadline) {
+        throw new Error("Test exceeded the 3 minute time limit");
+      }
+
+      const action = options.steps[i];
+      const instruction = describeAction(action);
+      const stepStart = Date.now();
+      const videoTimestampMs = Date.now() - testStart;
+
+      try {
+        const message = await executeAction(page, action);
+        const screenshot = await screenshotToDataUrl(page);
+
+        if (action.type === "screenshot" && action.label === "Final state") {
+          finalScreenshot = screenshot;
+        }
+
+        stepResults.push({
+          id: `step-${i + 1}`,
+          instruction,
+          action,
+          kind: actionKind(action),
+          status: "pass",
+          message,
+          durationMs: Date.now() - stepStart,
+          videoTimestampMs,
+          screenshot,
+        });
+      } catch (error) {
+        overallStatus = "fail";
+        const screenshot = await screenshotToDataUrl(page).catch(() => undefined);
+        finalScreenshot = screenshot ?? finalScreenshot;
+
+        stepResults.push({
+          id: `step-${i + 1}`,
+          instruction,
+          action,
+          kind: actionKind(action),
+          status: "fail",
+          message: error instanceof Error ? error.message : "Step failed",
+          durationMs: Date.now() - stepStart,
+          videoTimestampMs,
+          screenshot,
+        });
+        break;
+      }
+    }
+  } catch (error) {
+    overallStatus = "fail";
+    stepResults.push({
+      id: "step-error",
+      instruction: "Load page",
+      action: { type: "screenshot", label: "Error" },
+      kind: "navigate",
+      status: "fail",
+      message: error instanceof Error ? error.message : "Failed to load page",
+      durationMs: 0,
+      videoTimestampMs: 0,
+    });
+  } finally {
+    await page.waitForTimeout(300);
+    await page.close();
+    await context.close();
+
+    if (videoHandle) {
+      const rawPath = await videoHandle.path().catch(() => null);
+      if (rawPath) {
+        hasVideo = await saveReportVideo(reportId, rawPath);
+        await fs.unlink(rawPath).catch(() => undefined);
+      }
+    }
+
+    await fs.rm(videoDir, { recursive: true, force: true }).catch(() => undefined);
+  }
+
+  if (!finalScreenshot) {
+    finalScreenshot = stepResults.findLast((s) => s.screenshot)?.screenshot;
+  }
+
+  const finishedAt = new Date().toISOString();
+  const durationMs = Date.now() - testStart;
+
+  return {
+    id: reportId,
+    title: options.title ?? generateTitle(options.url, options.instructions),
+    url: options.url,
+    instructions: options.instructions,
+    viewport: options.viewport,
+    status: overallStatus,
+    summary: generateSummary(stepResults, options.url),
+    steps: stepResults,
+    startedAt,
+    finishedAt,
+    durationMs,
+    finalScreenshot,
+    hasVideo,
+    consoleLogs: consoleLogs.slice(-100),
+    networkLogs: networkLogs.slice(-100),
+  };
+}
