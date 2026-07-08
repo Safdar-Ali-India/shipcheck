@@ -23,22 +23,22 @@ export const HOW_IT_WORKS_STEPS = [
   {
     title: "Paste your URL",
     description:
-      "Enter your staging or production URL. No SDK, no test scripts, no infrastructure to maintain.",
+      "Enter any public site URL. No SDK, no CI setup, no account — just the address you want checked.",
   },
   {
-    title: "Write tests in plain English",
+    title: "Auto-explore (or guide it)",
     description:
-      "Describe what to test in natural language. ShipCheck navigates pages, clicks buttons, fills forms, and verifies results.",
+      "ShipCheck visits pages and fills safe forms automatically. Need a specific flow? Add plain-English steps in Advanced.",
   },
   {
     title: "Run a real browser",
     description:
-      "A headless browser executes your flow on desktop, tablet, or mobile viewports with screenshots at every step.",
+      "Playwright drives Chromium on desktop, tablet, or mobile viewports with screenshots at every step.",
   },
   {
     title: "Get a clear report",
     description:
-      "Receive pass/fail verdicts, step-by-step logs, screenshots, and a JSON report you can share with your team.",
+      "Pass/fail verdicts, step timeline, console/network logs, and optional video — export as JSON anytime.",
   },
 ] as const;
 
@@ -91,7 +91,7 @@ export const FAQ_ITEMS = [
   {
     question: "What sites can I test?",
     answer:
-      "Any public HTTP/HTTPS website. Private IPs, localhost, and internal hostnames are blocked for security.",
+      "Any public HTTP/HTTPS website. In production, private IPs and localhost are blocked for security. When running ShipCheck locally (npm run dev), localhost URLs are allowed so you can test apps on your machine.",
   },
 ] as const;
 
@@ -117,27 +117,27 @@ export const DEFAULT_THRESHOLD = 0.1;
 
 export const FEATURE_CARDS = [
   {
-    title: "Plain English tests",
+    title: "One-click auto test",
     description:
-      "Describe flows in natural language. No test scripts, no selectors, no maintenance overhead.",
+      "Paste a URL and ShipCheck explores pages and safe forms — no scripts, no selectors.",
     icon: "bot" as const,
   },
   {
     title: "Real browser agent",
     description:
-      "Playwright launches a real browser, clicks, types, and validates like a human user would.",
+      "Playwright launches Chromium, clicks, types, and validates like a human user would.",
     icon: "globe" as const,
   },
   {
-    title: "Visual diff engine",
+    title: "Optional visual diff",
     description:
-      "Compare screenshots pixel-by-pixel with side-by-side, overlay, diff-only, and split views.",
+      "Need pixel checks too? Compare uploads or live URL screenshots side-by-side.",
     icon: "scan" as const,
   },
   {
     title: "Instant reports",
     description:
-      "Screenshots, step logs, pass/fail verdicts, and JSON exports — ready for PR reviews.",
+      "Screenshots, step logs, pass/fail verdicts, and JSON exports — ready to share.",
     icon: "download" as const,
   },
 ] as const;

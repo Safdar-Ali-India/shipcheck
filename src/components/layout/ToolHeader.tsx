@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Moon, Sun, Ship } from "lucide-react";
 import { useTheme } from "next-themes";
@@ -8,6 +9,11 @@ import { Button } from "@/components/ui/button";
 
 export function ToolHeader() {
   const { resolvedTheme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   return (
     <header className="sticky top-0 z-50 border-b border-zinc-200/80 bg-white/80 backdrop-blur-lg dark:border-zinc-800 dark:bg-zinc-950/80">
@@ -19,15 +25,31 @@ export function ToolHeader() {
           <span>{BRAND.name}</span>
         </Link>
 
+        <nav className="hidden items-center gap-4 text-sm text-zinc-600 dark:text-zinc-400 sm:flex">
+          <a href="#ai-test" className="hover:text-violet-600 dark:hover:text-violet-400">
+            AI test
+          </a>
+          <a href="#visual-diff" className="hover:text-violet-600 dark:hover:text-violet-400">
+            Visual diff
+          </a>
+        </nav>
+
         <Button
           variant="ghost"
           size="icon"
           className="relative"
           onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
           aria-label="Toggle theme"
+          suppressHydrationWarning
         >
-          <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-          <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+          {!mounted ? (
+            <Sun className="h-4 w-4 opacity-0" aria-hidden />
+          ) : (
+            <>
+              <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+              <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+            </>
+          )}
         </Button>
       </div>
     </header>

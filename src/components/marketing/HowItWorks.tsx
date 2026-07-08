@@ -13,8 +13,8 @@ export function HowItWorks() {
         Catch bugs before your users do
       </h2>
       <p className="mx-auto mt-3 max-w-2xl text-center text-zinc-500 dark:text-zinc-400">
-        No test scripts. No signup. Describe your flow in plain English and ShipCheck runs a
-        real browser against your site.
+        No test scripts. No signup. Paste a URL — ShipCheck auto-explores your site in a real
+        browser and returns a clear report.
       </p>
 
       <div className="mt-12 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
