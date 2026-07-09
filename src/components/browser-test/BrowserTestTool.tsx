@@ -1,35 +1,79 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Bot, Globe, Loader2, Play, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { TestReportViewer } from "@/components/browser-test/TestReportViewer";
+import { DEMO_REPORT } from "@/lib/demoReport";
 import { EXAMPLE_TESTS, VIEWPORTS, type ViewportId } from "@/lib/constants";
 import type { BrowserTestReport } from "@/types/browserTest";
 
-const QUICK_SITES = [
-  "https://example.com",
-  "https://safdarali.in",
-  "https://www.google.com",
-  "http://localhost:3004",
+const LOADING_STEPS = [
+  "Launching browser…",
+  "Opening your site…",
+  "Exploring pages & forms…",
+  "Capturing screenshots…",
+  "Building report…",
 ] as const;
+
+function getQuickSites(): string[] {
+  const sites = [
+    "https://example.com",
+    "https://safdarali.in",
+    "https://www.google.com",
+  ];
+
+  if (typeof window !== "undefined") {
+    const { protocol, hostname, port } = window.location;
+    if (hostname === "localhost" || hostname === "127.0.0.1") {
+      sites.push(`${protocol}//${hostname}${port ? `:${port}` : ""}`);
+    }
+  }
+
+  return sites;
+}
 
 export function BrowserTestTool() {
   const [url, setUrl] = useState<string>("https://example.com");
   const [instructions, setInstructions] = useState<string>("");
   const [viewport, setViewport] = useState<ViewportId>("desktop");
   const [loading, setLoading] = useState(false);
+  const [loadingStep, setLoadingStep] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [report, setReport] = useState<(BrowserTestReport & { planner?: string }) | null>(
     null,
   );
+  const [showDemo, setShowDemo] = useState(false);
+  const [quickSites, setQuickSites] = useState<string[]>([
+    "https://example.com",
+    "https://safdarali.in",
+    "https://www.google.com",
+  ]);
+
+  useEffect(() => {
+    setQuickSites(getQuickSites());
+  }, []);
+
+  useEffect(() => {
+    if (!loading) {
+      setLoadingStep(0);
+      return;
+    }
+
+    const interval = window.setInterval(() => {
+      setLoadingStep((step) => (step + 1) % LOADING_STEPS.length);
+    }, 2200);
+
+    return () => window.clearInterval(interval);
+  }, [loading]);
 
   const runTest = async (body: Record<string, unknown>) => {
     setLoading(true);
     setError(null);
     setReport(null);
+    setShowDemo(false);
 
     try {
       const response = await fetch("/api/browser-test", {
@@ -55,6 +99,13 @@ export function BrowserTestTool() {
     }
   };
 
+  const showSampleReport = () => {
+    setError(null);
+    setReport(null);
+    setShowDemo(true);
+    document.getElementById("sample-report")?.scrollIntoView({ behavior: "smooth" });
+  };
+
   return (
     <div className="space-y-6">
       <Card className="border-violet-200/80 shadow-md dark:border-violet-900/50">
@@ -64,10 +115,10 @@ export function BrowserTestTool() {
               <Bot className="h-5 w-5" />
             </div>
             <div>
-              <CardTitle>AI browser test</CardTitle>
+              <CardTitle>Browser smoke test</CardTitle>
               <CardDescription>
-                Paste any website URL — ShipCheck auto-explores pages, fills forms, records
-                video, and returns a full TesterArmy-style report. Free, no signup.
+                Paste any URL — ShipCheck auto-explores pages, fills safe forms, records
+                video, and returns a step-by-step report. Free, no signup.
               </CardDescription>
             </div>
           </div>
@@ -88,7 +139,7 @@ export function BrowserTestTool() {
               />
             </div>
             <div className="flex flex-wrap gap-2">
-              {QUICK_SITES.map((site) => (
+              {quickSites.map((site) => (
                 <button
                   key={site}
                   type="button"
@@ -101,24 +152,35 @@ export function BrowserTestTool() {
             </div>
           </div>
 
-          <Button
-            className="w-full sm:w-auto"
-            size="lg"
-            disabled={loading || !url.trim()}
-            onClick={() => void runTest({ url: url.trim(), mode: "auto", viewport })}
-          >
-            {loading ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Auto-testing site…
-              </>
-            ) : (
-              <>
-                <Sparkles className="h-4 w-4" />
-                Test any site automatically
-              </>
-            )}
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              className="w-full sm:w-auto"
+              size="lg"
+              disabled={loading || !url.trim()}
+              onClick={() => void runTest({ url: url.trim(), mode: "auto", viewport })}
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  {LOADING_STEPS[loadingStep]}
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-4 w-4" />
+                  Test any site automatically
+                </>
+              )}
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              size="lg"
+              disabled={loading}
+              onClick={showSampleReport}
+            >
+              See sample report
+            </Button>
+          </div>
 
           <p className="text-xs text-zinc-500">
             Auto mode: visits up to 5 pages · fills safe forms (skips login/payment) · video +
@@ -209,7 +271,18 @@ export function BrowserTestTool() {
         </CardContent>
       </Card>
 
-      {report && <TestReportViewer report={report} onClose={() => setReport(null)} />}
+      <div id="sample-report" className="scroll-mt-24">
+        {report && (
+          <TestReportViewer report={report} onClose={() => setReport(null)} />
+        )}
+        {showDemo && !report && (
+          <TestReportViewer
+            report={DEMO_REPORT}
+            demo
+            onClose={() => setShowDemo(false)}
+          />
+        )}
+      </div>
     </div>
   );
 }

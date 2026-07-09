@@ -18,6 +18,7 @@ import type { BrowserTestReport, BrowserTestStepResult, TestStepKind } from "@/t
 interface TestReportViewerProps {
   report: BrowserTestReport & { planner?: string };
   onClose?: () => void;
+  demo?: boolean;
 }
 
 function StepIcon({ kind }: { kind: TestStepKind }) {
@@ -75,7 +76,7 @@ function StepRow({
   );
 }
 
-export function TestReportViewer({ report, onClose }: TestReportViewerProps) {
+export function TestReportViewer({ report, onClose, demo = false }: TestReportViewerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [activeStepIndex, setActiveStepIndex] = useState(0);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
@@ -137,6 +138,11 @@ export function TestReportViewer({ report, onClose }: TestReportViewerProps) {
 
   return (
     <div className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950 text-zinc-100 shadow-2xl">
+      {demo && (
+        <div className="border-b border-violet-900/50 bg-violet-950/40 px-5 py-2 text-center text-xs font-medium text-violet-300">
+          Sample report — run a live test above to generate your own
+        </div>
+      )}
       <div className="flex items-start justify-between gap-4 border-b border-zinc-800 px-5 py-4">
         <div>
           <p className="text-xs font-medium uppercase tracking-wider text-zinc-500">

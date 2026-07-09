@@ -136,7 +136,7 @@ export function CompareTool() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <Tabs value={mode} onValueChange={(v) => setMode(v as CompareInputMode)}>
+          <Tabs defaultValue="upload" value={mode} onValueChange={(v) => setMode(v as CompareInputMode)}>
             <TabsList>
               <TabsTrigger value="upload">
                 <ImageUp className="mr-1.5 h-4 w-4" />

@@ -48,7 +48,7 @@ export function SiteFooter() {
         </nav>
 
         <p className="mt-4 text-xs text-zinc-400">
-          © {new Date().getFullYear()} {BRAND.name}. Free visual regression testing.
+          © {new Date().getFullYear()} {BRAND.name}. Free AI browser testing.
         </p>
       </div>
     </footer>

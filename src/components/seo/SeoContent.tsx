@@ -9,17 +9,12 @@ export function SeoContent() {
         </h2>
         <ol className="mt-4 list-decimal space-y-3 pl-5 text-base leading-relaxed">
           <li>
-            <strong>Paste your URL</strong> — enter any public staging or production
-            website. ShipCheck opens it in a real headless browser.
+            <strong>Paste your URL</strong> — enter any public site. ShipCheck opens it in a
+            real headless browser and auto-explores safe pages.
           </li>
           <li>
-            <strong>Write instructions in plain English</strong> — describe clicks,
-            form fills, and checks like &quot;Click Get started&quot; or &quot;Verify page
-            contains Pricing&quot;.
-          </li>
-          <li>
-            <strong>Run the test</strong> — ShipCheck plans and executes browser steps,
-            capturing screenshots along the way.
+            <strong>Run auto test (or add instructions)</strong> — one click explores pages
+            and forms. For specific flows, add plain-English steps in Advanced.
           </li>
           <li>
             <strong>Review the report</strong> — get a pass/fail verdict, step timeline,

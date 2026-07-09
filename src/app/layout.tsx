@@ -22,17 +22,17 @@ export const metadata: Metadata = {
     canonical: SITE_URL,
   },
   openGraph: {
-    title: "ShipCheck — Free Visual Regression Testing Tool",
+    title: "ShipCheck — Free AI Browser Testing Tool",
     description:
-      "Compare screenshots pixel by pixel. Upload images or capture live URLs. Free, instant, no signup.",
+      "Paste a URL and get a real browser smoke test with screenshots and pass/fail reports. Free, instant, no signup.",
     url: SITE_URL,
     siteName: BRAND.name,
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "ShipCheck — Visual Regression Testing",
-    description: "Free UI diff checker. Compare screenshots online.",
+    title: "ShipCheck — Free AI Browser Testing",
+    description: "Auto-explore any site in a real browser. Free smoke tests, no signup.",
     creator: "@safdarali___",
   },
   robots: {
