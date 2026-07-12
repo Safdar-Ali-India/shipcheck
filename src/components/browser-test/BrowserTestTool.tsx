@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { TestReportViewer } from "@/components/browser-test/TestReportViewer";
 import { DEMO_REPORT } from "@/lib/demoReport";
 import { EXAMPLE_TESTS, VIEWPORTS, type ViewportId } from "@/lib/constants";
-import type { BrowserTestReport } from "@/types/browserTest";
+import type { BrowserTestHistoryItem, BrowserTestReport } from "@/types/browserTest";
 
 const LOADING_STEPS = [
   "Launching browser…",
@@ -45,7 +45,9 @@ export function BrowserTestTool() {
   const [report, setReport] = useState<(BrowserTestReport & { planner?: string }) | null>(
     null,
   );
+  const [shareUrl, setShareUrl] = useState<string | undefined>(undefined);
   const [showDemo, setShowDemo] = useState(false);
+  const [history, setHistory] = useState<BrowserTestHistoryItem[]>([]);
   const [quickSites, setQuickSites] = useState<string[]>([
     "https://example.com",
     "https://safdarali.in",
@@ -54,6 +56,21 @@ export function BrowserTestTool() {
 
   useEffect(() => {
     setQuickSites(getQuickSites());
+  }, []);
+
+  const loadHistory = async () => {
+    try {
+      const response = await fetch("/api/browser-test", { method: "GET" });
+      if (!response.ok) return;
+      const data = (await response.json()) as { reports?: BrowserTestHistoryItem[] };
+      setHistory(data.reports ?? []);
+    } catch {
+      // ignore history load failures
+    }
+  };
+
+  useEffect(() => {
+    void loadHistory();
   }, []);
 
   useEffect(() => {
@@ -85,6 +102,7 @@ export function BrowserTestTool() {
       const data = (await response.json()) as BrowserTestReport & {
         error?: string;
         planner?: string;
+        shareUrl?: string;
       };
 
       if (!response.ok) {
@@ -92,6 +110,8 @@ export function BrowserTestTool() {
       }
 
       setReport(data);
+      setShareUrl(data.shareUrl);
+      void loadHistory();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Test run failed");
     } finally {
@@ -102,6 +122,7 @@ export function BrowserTestTool() {
   const showSampleReport = () => {
     setError(null);
     setReport(null);
+    setShareUrl(undefined);
     setShowDemo(true);
     document.getElementById("sample-report")?.scrollIntoView({ behavior: "smooth" });
   };
@@ -273,7 +294,14 @@ export function BrowserTestTool() {
 
       <div id="sample-report" className="scroll-mt-24">
         {report && (
-          <TestReportViewer report={report} onClose={() => setReport(null)} />
+          <TestReportViewer
+            report={report}
+            shareUrl={shareUrl}
+            onClose={() => {
+              setReport(null);
+              setShareUrl(undefined);
+            }}
+          />
         )}
         {showDemo && !report && (
           <TestReportViewer
@@ -283,6 +311,53 @@ export function BrowserTestTool() {
           />
         )}
       </div>
+
+      <Card className="border-zinc-200/80 dark:border-zinc-800">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Recent runs</CardTitle>
+          <CardDescription>Open past reports or copy share links.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {history.length === 0 ? (
+            <p className="text-sm text-zinc-500">No runs yet. Start your first browser test.</p>
+          ) : (
+            <div className="space-y-2">
+              {history.map((item) => (
+                <div
+                  key={item.id}
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-zinc-200 px-3 py-2 text-sm dark:border-zinc-800"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate font-medium text-zinc-900 dark:text-zinc-100">
+                      {item.title}
+                    </p>
+                    <p className="truncate text-xs text-zinc-500">{item.url}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`rounded px-2 py-0.5 text-[10px] font-semibold uppercase ${
+                        item.status === "pass"
+                          ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                          : "bg-red-500/10 text-red-600 dark:text-red-400"
+                      }`}
+                    >
+                      {item.status}
+                    </span>
+                    <a
+                      href={`/reports/${item.id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs font-medium text-violet-600 hover:underline dark:text-violet-400"
+                    >
+                      Open
+                    </a>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

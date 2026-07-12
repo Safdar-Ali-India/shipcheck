@@ -57,3 +57,13 @@ export interface BrowserTestReport {
   consoleLogs: ConsoleLogEntry[];
   networkLogs: NetworkLogEntry[];
 }
+
+export interface BrowserTestHistoryItem {
+  id: string;
+  title: string;
+  url: string;
+  status: "pass" | "fail";
+  finishedAt: string;
+  durationMs: number;
+  hasVideo?: boolean;
+}

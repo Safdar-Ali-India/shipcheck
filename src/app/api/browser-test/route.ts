@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPresetTest } from "@/lib/presetTests";
+import { cleanupOldReports, listRecentReports, saveReportJson } from "@/lib/reportStorage";
 import { assertSafeUrl, checkRateLimit } from "@/lib/security";
 import { browserTestRequestSchema } from "@/lib/validation";
 import { runAutoSiteTest } from "@/services/autoSiteTest";
@@ -8,6 +9,12 @@ import { planBrowserTest } from "@/services/testPlanner";
 
 export const runtime = "nodejs";
 export const maxDuration = 180;
+
+export async function GET() {
+  void cleanupOldReports();
+  const reports = await listRecentReports();
+  return NextResponse.json({ reports });
+}
 
 export async function POST(request: NextRequest) {
   const ip =
@@ -45,7 +52,8 @@ export async function POST(request: NextRequest) {
         url,
         viewport: parsed.data.viewport,
       });
-      return NextResponse.json({ ...report, planner: "auto" });
+      await saveReportJson(report).catch(() => undefined);
+      return NextResponse.json({ ...report, planner: "auto", shareUrl: `/reports/${report.id}` });
     }
 
     let url: string;
@@ -79,7 +87,8 @@ export async function POST(request: NextRequest) {
       title,
     });
 
-    return NextResponse.json({ ...report, planner });
+    await saveReportJson(report).catch(() => undefined);
+    return NextResponse.json({ ...report, planner, shareUrl: `/reports/${report.id}` });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Browser test failed";
     return NextResponse.json({ error: message }, { status: 400 });

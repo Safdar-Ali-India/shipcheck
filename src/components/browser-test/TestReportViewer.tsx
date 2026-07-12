@@ -3,9 +3,11 @@
 import { useEffect, useRef, useState } from "react";
 import {
   CheckCircle2,
+  Copy,
   Download,
   Eye,
   Globe2,
+  Link2,
   MousePointerClick,
   X,
   Zap,
@@ -19,6 +21,7 @@ interface TestReportViewerProps {
   report: BrowserTestReport & { planner?: string };
   onClose?: () => void;
   demo?: boolean;
+  shareUrl?: string;
 }
 
 function StepIcon({ kind }: { kind: TestStepKind }) {
@@ -76,7 +79,12 @@ function StepRow({
   );
 }
 
-export function TestReportViewer({ report, onClose, demo = false }: TestReportViewerProps) {
+export function TestReportViewer({
+  report,
+  onClose,
+  demo = false,
+  shareUrl,
+}: TestReportViewerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [activeStepIndex, setActiveStepIndex] = useState(0);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
@@ -84,6 +92,7 @@ export function TestReportViewer({ report, onClose, demo = false }: TestReportVi
   const [videoFailed, setVideoFailed] = useState(false);
   const [consoleFilter, setConsoleFilter] = useState<string>("all");
   const [networkFilter, setNetworkFilter] = useState("");
+  const [copied, setCopied] = useState(false);
 
   const activeStep = report.steps[activeStepIndex] ?? report.steps[0];
   const passed = report.status === "pass";
@@ -136,6 +145,17 @@ export function TestReportViewer({ report, onClose, demo = false }: TestReportVi
     void navigator.clipboard.writeText(JSON.stringify(data, null, 2));
   };
 
+  const copyShareUrl = () => {
+    if (!shareUrl) return;
+    const absolute =
+      shareUrl.startsWith("http") || typeof window === "undefined"
+        ? shareUrl
+        : `${window.location.origin}${shareUrl}`;
+    void navigator.clipboard.writeText(absolute);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1500);
+  };
+
   return (
     <div className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950 text-zinc-100 shadow-2xl">
       {demo && (
@@ -151,6 +171,27 @@ export function TestReportViewer({ report, onClose, demo = false }: TestReportVi
           <h3 className="mt-1 text-lg font-semibold text-white">{report.title}</h3>
         </div>
         <div className="flex items-center gap-2">
+          {shareUrl && (
+            <>
+              <a
+                href={shareUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 rounded-md border border-zinc-700 bg-zinc-900 px-2.5 py-1.5 text-xs text-zinc-200 hover:bg-zinc-800"
+              >
+                <Link2 className="h-3.5 w-3.5" />
+                Open share URL
+              </a>
+              <button
+                type="button"
+                onClick={copyShareUrl}
+                className="inline-flex items-center gap-1 rounded-md border border-zinc-700 bg-zinc-900 px-2.5 py-1.5 text-xs text-zinc-200 hover:bg-zinc-800"
+              >
+                <Copy className="h-3.5 w-3.5" />
+                {copied ? "Copied" : "Copy link"}
+              </button>
+            </>
+          )}
           <Button
             variant="secondary"
             size="sm"
