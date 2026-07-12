@@ -17,15 +17,70 @@ const STEP_TIMEOUT = 15_000;
 const TOTAL_TIMEOUT = 180_000;
 const MAX_PAGES = 5;
 const MAX_STEPS = 24;
+const MAX_LINKS_PER_PAGE = 10;
 const NAV_RETRIES = 2;
 
 const SKIP_FORM =
   /password|login|signin|sign-in|checkout|payment|billing|credit|cvv|card/i;
 
-function normalizeUrl(raw: string, base?: string): string {
+const JOURNEY_POSITIVE_KEYWORDS = [
+  "pricing",
+  "plan",
+  "feature",
+  "product",
+  "solution",
+  "contact",
+  "about",
+  "docs",
+  "documentation",
+  "blog",
+  "demo",
+  "start",
+  "getting-started",
+  "learn",
+  "try",
+  "tour",
+  "case-study",
+  "integrations",
+] as const;
+
+const JOURNEY_NEGATIVE_KEYWORDS = [
+  "privacy",
+  "terms",
+  "cookie",
+  "sitemap",
+  "logout",
+  "signout",
+  "unsubscribe",
+  "mailto:",
+  "tel:",
+] as const;
+
+type QueueItem = {
+  url: string;
+  score: number;
+  source?: string;
+};
+
+type DiscoveredLink = {
+  url: string;
+  label: string;
+  score: number;
+};
+
+export function scoreJourneyText(text: string): number {
+  const loweredText = text.toLowerCase();
+  let score = 0;
+  if (JOURNEY_POSITIVE_KEYWORDS.some((keyword) => loweredText.includes(keyword))) score += 25;
+  if (JOURNEY_NEGATIVE_KEYWORDS.some((keyword) => loweredText.includes(keyword))) score -= 35;
+  return score;
+}
+
+export function normalizeJourneyUrl(raw: string, base?: string): string {
   const u = new URL(raw, base);
   u.hash = "";
-  return u.origin + u.pathname.replace(/\/$/, "") || u.origin + "/";
+  const normalizedPath = u.pathname.replace(/\/$/, "") || "/";
+  return `${u.origin}${normalizedPath}`;
 }
 
 async function dismissConsentIfPresent(page: Page): Promise<void> {
@@ -62,23 +117,132 @@ async function navigateWithRetry(page: Page, url: string): Promise<void> {
   throw lastError instanceof Error ? lastError : new Error(`Failed to load ${url}`);
 }
 
-async function discoverInternalLinks(page: Page, origin: string): Promise<string[]> {
-  return page.evaluate((siteOrigin) => {
-    const found = new Set<string>();
-    document.querySelectorAll("a[href]").forEach((anchor) => {
-      try {
-        const href = (anchor as HTMLAnchorElement).href;
-        const u = new URL(href);
-        if (u.origin !== siteOrigin) return;
-        if (u.hash && u.pathname === window.location.pathname) return;
-        if (/\.(pdf|png|jpe?g|gif|webp|zip|exe|dmg|svg|ico)$/i.test(u.pathname)) return;
-        found.add(u.origin + u.pathname);
-      } catch {
-        /* ignore bad URLs */
+async function discoverInternalLinks(page: Page, origin: string): Promise<DiscoveredLink[]> {
+  return page.evaluate(
+    ({ siteOrigin, positiveKeywords, negativeKeywords, maxLinksPerPage }) => {
+      const found = new Map<string, { label: string; score: number }>();
+      const currentPath = window.location.pathname.replace(/\/$/, "") || "/";
+
+      document.querySelectorAll("a[href]").forEach((anchor) => {
+        const element = anchor as HTMLAnchorElement;
+        const rawText = `${element.innerText ?? ""} ${element.getAttribute("aria-label") ?? ""}`;
+        const label = rawText.trim().replace(/\s+/g, " ");
+        if (!element.href) return;
+        if (element.getAttribute("target") === "_blank") return;
+
+        let score = 0;
+        if (element.closest("header, nav")) score += 40;
+        if (element.closest("main")) score += 15;
+        if (element.closest("footer")) score -= 10;
+        if (element.className.toLowerCase().includes("button")) score += 15;
+        if (element.getAttribute("role")?.toLowerCase() === "button") score += 15;
+        if (element.offsetParent === null) score -= 15;
+        if (label.length >= 4 && label.length <= 40) score += 10;
+
+        const loweredText = `${label} ${element.href}`.toLowerCase();
+        if (positiveKeywords.some((keyword) => loweredText.includes(keyword))) score += 25;
+        if (negativeKeywords.some((keyword) => loweredText.includes(keyword))) score -= 35;
+        if (/^https?:\/\/[^/]+\/?$/.test(element.href)) score -= 5;
+
+        try {
+          const u = new URL(element.href);
+          if (u.origin !== siteOrigin) return;
+          if (u.hash && u.pathname === window.location.pathname) return;
+          if (/\.(pdf|png|jpe?g|gif|webp|zip|exe|dmg|svg|ico)$/i.test(u.pathname)) return;
+          if (u.pathname.startsWith("/_next")) return;
+
+          const normalizedPath = u.pathname.replace(/\/$/, "") || "/";
+          const normalized = `${u.origin}${normalizedPath}`;
+          if (normalizedPath === currentPath) score -= 30;
+
+          const existing = found.get(normalized);
+          if (!existing || score > existing.score) {
+            found.set(normalized, { label: label || normalizedPath, score });
+          }
+        } catch {
+          /* ignore bad URLs */
+        }
+      });
+
+      return Array.from(found.entries())
+        .map(([url, meta]) => ({ url, label: meta.label, score: meta.score }))
+        .sort((a, b) => b.score - a.score)
+        .slice(0, maxLinksPerPage);
+    },
+    {
+      siteOrigin: origin,
+      positiveKeywords: [...JOURNEY_POSITIVE_KEYWORDS],
+      negativeKeywords: [...JOURNEY_NEGATIVE_KEYWORDS],
+      maxLinksPerPage: MAX_LINKS_PER_PAGE,
+    },
+  );
+}
+
+async function captureJourneyCandidate(
+  page: Page,
+  origin: string,
+): Promise<DiscoveredLink | null> {
+  return page.evaluate(
+    ({ siteOrigin, positiveKeywords }) => {
+      const candidates = Array.from(
+        document.querySelectorAll<HTMLElement>('a[href], button, [role="button"]'),
+      );
+
+      const findAnchor = (element: HTMLElement): HTMLAnchorElement | null => {
+        if (element.tagName.toLowerCase() === "a") return element as HTMLAnchorElement;
+        return element.querySelector<HTMLAnchorElement>("a[href]");
+      };
+
+      for (const element of candidates) {
+        if (element.offsetParent === null) continue;
+        const text = `${element.innerText ?? ""} ${element.getAttribute("aria-label") ?? ""}`
+          .trim()
+          .replace(/\s+/g, " ");
+        if (!text) continue;
+        const lowered = text.toLowerCase();
+        if (!positiveKeywords.some((keyword) => lowered.includes(keyword))) continue;
+
+        const anchor = findAnchor(element);
+        if (!anchor?.href) continue;
+
+        try {
+          const url = new URL(anchor.href);
+          if (url.origin !== siteOrigin) continue;
+          const normalizedPath = url.pathname.replace(/\/$/, "") || "/";
+          return {
+            url: `${url.origin}${normalizedPath}`,
+            label: text.slice(0, 80),
+            score: 60,
+          };
+        } catch {
+          /* ignore */
+        }
       }
-    });
-    return Array.from(found);
-  }, origin);
+
+      return null;
+    },
+    {
+      siteOrigin: origin,
+      positiveKeywords: [...JOURNEY_POSITIVE_KEYWORDS],
+    },
+  );
+}
+
+function enqueueLink(
+  queue: QueueItem[],
+  queueScores: Map<string, number>,
+  visited: Set<string>,
+  link: QueueItem,
+  origin: string,
+) {
+  const normalized = normalizeJourneyUrl(link.url, origin);
+  if (visited.has(normalized)) return;
+
+  const existingScore = queueScores.get(normalized);
+  if (existingScore !== undefined && existingScore >= link.score) return;
+
+  queueScores.set(normalized, link.score);
+  queue.push({ url: normalized, score: link.score, source: link.source });
 }
 
 type StepPush = (
@@ -180,7 +344,7 @@ export async function runAutoSiteTest(options: {
   const testStart = Date.now();
   const deadline = Date.now() + TOTAL_TIMEOUT;
   const origin = new URL(options.url).origin;
-  const startUrl = normalizeUrl(options.url);
+  const startUrl = normalizeJourneyUrl(options.url);
 
   const config = getViewportConfig(options.viewport);
   const browser = await getBrowser();
@@ -270,17 +434,26 @@ export async function runAutoSiteTest(options: {
     }
   };
 
-  const queue = [startUrl];
+  const queue: QueueItem[] = [{ url: startUrl, score: 100, source: "start page" }];
+  const queueScores = new Map<string, number>([[startUrl, 100]]);
   const visited = new Set<string>();
+  const visitedPages: string[] = [];
 
   try {
     while (queue.length > 0 && visited.size < MAX_PAGES && stepResults.length < MAX_STEPS) {
       if (Date.now() > deadline) break;
 
-      const pageUrl = queue.shift()!;
-      const normalized = normalizeUrl(pageUrl, origin);
+      queue.sort((a, b) => b.score - a.score);
+      const next = queue.shift()!;
+      const normalized = normalizeJourneyUrl(next.url, origin);
+      const latestScore = queueScores.get(normalized);
+      if (latestScore !== undefined && latestScore > next.score) {
+        continue;
+      }
+      queueScores.delete(normalized);
       if (visited.has(normalized)) continue;
       visited.add(normalized);
+      visitedPages.push(new URL(normalized).pathname || "/");
 
       if (visited.size === 1) {
         await navigateWithRetry(page, normalized);
@@ -319,10 +492,39 @@ export async function runAutoSiteTest(options: {
 
       await push("Capture scrolled view", "screenshot", async () => "Screenshot captured");
 
+      const ctaCandidate = await captureJourneyCandidate(page, origin);
+      if (ctaCandidate) {
+        enqueueLink(
+          queue,
+          queueScores,
+          visited,
+          {
+            url: ctaCandidate.url,
+            score: next.score + ctaCandidate.score,
+            source: `CTA: ${ctaCandidate.label}`,
+          },
+          origin,
+        );
+      }
+
       const links = await discoverInternalLinks(page, origin);
+      await push("Discover next journey pages", "assert", async () => {
+        if (links.length === 0) return "No additional internal links found";
+        return `Found ${links.length} internal candidates`;
+      });
+
       for (const link of links) {
-        const n = normalizeUrl(link, origin);
-        if (!visited.has(n) && !queue.includes(n)) queue.push(n);
+        enqueueLink(
+          queue,
+          queueScores,
+          visited,
+          {
+            url: link.url,
+            score: next.score * 0.5 + link.score,
+            source: link.label,
+          },
+          origin,
+        );
       }
     }
   } catch (error) {
@@ -366,7 +568,9 @@ export async function runAutoSiteTest(options: {
     status: overallStatus,
     summary:
       overallStatus === "pass"
-        ? `Explored ${visited.size} page(s), ${passed} steps passed on ${options.url}.`
+        ? `Explored ${visited.size} page(s), ${passed} steps passed on ${options.url}. Visited: ${visitedPages
+            .slice(0, 5)
+            .join(", ")}.`
         : `${failed} step(s) failed across ${visited.size} page(s) on ${options.url}.`,
     steps: stepResults,
     startedAt,

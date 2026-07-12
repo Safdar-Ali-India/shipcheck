@@ -19,24 +19,11 @@ const LOADING_STEPS = [
 ] as const;
 
 function getQuickSites(): string[] {
-  const sites = [
-    "https://example.com",
-    "https://safdarali.in",
-    "https://www.google.com",
-  ];
-
-  if (typeof window !== "undefined") {
-    const { protocol, hostname, port } = window.location;
-    if (hostname === "localhost" || hostname === "127.0.0.1") {
-      sites.push(`${protocol}//${hostname}${port ? `:${port}` : ""}`);
-    }
-  }
-
-  return sites;
+  return ["https://www.google.com"];
 }
 
 export function BrowserTestTool() {
-  const [url, setUrl] = useState<string>("https://example.com");
+  const [url, setUrl] = useState<string>("https://www.google.com");
   const [instructions, setInstructions] = useState<string>("");
   const [viewport, setViewport] = useState<ViewportId>("desktop");
   const [loading, setLoading] = useState(false);
@@ -48,11 +35,7 @@ export function BrowserTestTool() {
   const [shareUrl, setShareUrl] = useState<string | undefined>(undefined);
   const [showDemo, setShowDemo] = useState(false);
   const [history, setHistory] = useState<BrowserTestHistoryItem[]>([]);
-  const [quickSites, setQuickSites] = useState<string[]>([
-    "https://example.com",
-    "https://safdarali.in",
-    "https://www.google.com",
-  ]);
+  const [quickSites, setQuickSites] = useState<string[]>(["https://www.google.com"]);
 
   useEffect(() => {
     setQuickSites(getQuickSites());

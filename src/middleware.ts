@@ -1,17 +1,29 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-const CANONICAL_HOST = process.env.CANONICAL_HOST?.toLowerCase().trim();
+function normalizeHost(host: string): string {
+  return host.toLowerCase().split(":")[0]?.trim();
+}
 
-export function middleware(request: NextRequest) {
-  const rawHost = (request.headers.get("host") ?? "").toLowerCase();
-  const host = rawHost.split(":")[0];
+export function getCanonicalRedirectHost(
+  requestHost: string,
+  canonicalHostEnv = process.env.CANONICAL_HOST,
+): string | null {
+  const host = normalizeHost(requestHost);
+  const canonical = canonicalHostEnv?.toLowerCase().trim();
+  if (!canonical) return null;
+
   const isLocal = host.includes("localhost") || host.includes("127.0.0.1");
   const isVercelHost = host.endsWith(".vercel.app");
+  if (isLocal || isVercelHost || host === canonical) return null;
+  return canonical;
+}
 
-  if (CANONICAL_HOST && !isLocal && !isVercelHost && host !== CANONICAL_HOST) {
+export function middleware(request: NextRequest) {
+  const redirectHost = getCanonicalRedirectHost(request.headers.get("host") ?? "");
+  if (redirectHost) {
     const url = request.nextUrl.clone();
-    url.host = CANONICAL_HOST;
+    url.host = redirectHost;
     url.protocol = "https:";
     return NextResponse.redirect(url, 308);
   }
