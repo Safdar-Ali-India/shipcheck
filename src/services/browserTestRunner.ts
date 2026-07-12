@@ -17,6 +17,9 @@ import type {
 
 const STEP_TIMEOUT = 20_000;
 const TOTAL_TIMEOUT = 180_000;
+const NAV_RETRIES = 2;
+const ACTION_RETRIES = 2;
+const RETRY_DELAY_MS = 500;
 
 function actionKind(action: BrowserTestAction): TestStepKind {
   switch (action.type) {
@@ -61,59 +64,123 @@ async function screenshotToDataUrl(page: Page): Promise<string> {
   return `data:image/png;base64,${Buffer.from(buffer).toString("base64")}`;
 }
 
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function normalizeTarget(value: string): string {
+  return value.trim().replace(/^["']|["']$/g, "");
+}
+
+async function retry<T>(
+  attempts: number,
+  run: (attempt: number) => Promise<T>,
+): Promise<T> {
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    try {
+      return await run(attempt);
+    } catch (error) {
+      lastError = error;
+      if (attempt < attempts) {
+        await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS * attempt));
+      }
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error("Operation failed");
+}
+
+async function navigateWithRetry(page: Page, url: string): Promise<void> {
+  await retry(NAV_RETRIES, async (attempt) => {
+    const waitUntil = attempt === 1 ? "domcontentloaded" : "load";
+    await page.goto(url, { waitUntil, timeout: 30_000 });
+    await page.waitForTimeout(500);
+  });
+}
+
 async function resolveLocator(page: Page, target: string) {
-  if (/^search$/i.test(target.trim())) {
+  const cleanedTarget = normalizeTarget(target);
+  const escapedTarget = escapeRegex(cleanedTarget);
+  const targetRegex = new RegExp(escapedTarget, "i");
+
+  if (/^search$/i.test(cleanedTarget)) {
     const search = page.locator('textarea[name="q"], input[name="q"]');
     if ((await search.count()) > 0) return search.first();
   }
 
+  const cssSafe = cleanedTarget.replace(/"/g, '\\"');
   const strategies = [
-    () => page.getByRole("combobox", { name: new RegExp(target, "i") }),
-    () => page.getByRole("button", { name: new RegExp(target, "i") }),
-    () => page.getByRole("link", { name: new RegExp(target, "i") }),
-    () => page.getByLabel(new RegExp(target, "i")),
-    () => page.getByPlaceholder(new RegExp(target, "i")),
-    () => page.getByText(new RegExp(target, "i")),
+    () => page.getByRole("combobox", { name: targetRegex }),
+    () => page.getByRole("button", { name: targetRegex }),
+    () => page.getByRole("link", { name: targetRegex }),
+    () => page.getByRole("textbox", { name: targetRegex }),
+    () => page.getByRole("menuitem", { name: targetRegex }),
+    () => page.getByRole("tab", { name: targetRegex }),
+    () => page.getByLabel(targetRegex),
+    () => page.getByPlaceholder(targetRegex),
+    () => page.locator(`[data-testid*="${cssSafe}" i], [name*="${cssSafe}" i], [id*="${cssSafe}" i]`),
+    () => page.locator(`button:has-text("${cssSafe}"), a:has-text("${cssSafe}")`),
+    () => page.getByText(targetRegex),
   ];
 
   for (const strategy of strategies) {
     const locator = strategy();
     if ((await locator.count()) > 0) {
+      await locator.first().scrollIntoViewIfNeeded().catch(() => undefined);
       return locator.first();
     }
   }
 
-  throw new Error(`Could not find "${target}" on the page`);
+  throw new Error(`Could not find "${cleanedTarget}" on the page`);
 }
 
 async function executeAction(page: Page, action: BrowserTestAction): Promise<string> {
   switch (action.type) {
     case "click": {
       const locator = await resolveLocator(page, action.target);
-      await locator.click({ timeout: STEP_TIMEOUT });
+      await retry(ACTION_RETRIES, async (attempt) => {
+        await locator.click({ timeout: STEP_TIMEOUT, force: attempt > 1 });
+      });
       return `Clicked "${action.target}"`;
     }
     case "fill": {
       const locator = await resolveLocator(page, action.target);
-      await locator.fill(action.value, { timeout: STEP_TIMEOUT });
+      await retry(ACTION_RETRIES, async (attempt) => {
+        if (attempt === 1) {
+          await locator.fill(action.value, { timeout: STEP_TIMEOUT });
+        } else {
+          await locator.click({ timeout: STEP_TIMEOUT }).catch(() => undefined);
+          await locator.clear({ timeout: STEP_TIMEOUT }).catch(() => undefined);
+          await locator.type(action.value, { delay: 15, timeout: STEP_TIMEOUT });
+        }
+      });
       return `Filled "${action.target}"`;
     }
     case "assertVisible": {
       const locator = await resolveLocator(page, action.target);
-      await locator.waitFor({ state: "visible", timeout: STEP_TIMEOUT });
+      await retry(ACTION_RETRIES, async () => {
+        await locator.scrollIntoViewIfNeeded({ timeout: STEP_TIMEOUT }).catch(() => undefined);
+        await locator.waitFor({ state: "visible", timeout: STEP_TIMEOUT });
+      });
       return `"${action.target}" is visible`;
     }
     case "assertText": {
       const regex = new RegExp(action.text, "i");
-      const checkFrame = async (frame: Page | import("playwright").Frame) => {
+      const checkFrame = async (frame: Page | import("playwright").Frame): Promise<boolean> => {
         const text = await frame.locator("body").innerText().catch(() => "");
         return regex.test(text);
       };
-      if (await checkFrame(page)) {
-        return `Found text "${action.text}"`;
-      }
+
+      await retry(ACTION_RETRIES, async () => {
+        if (await checkFrame(page)) return;
+        for (const frame of page.frames()) {
+          if (frame !== page.mainFrame() && (await checkFrame(frame))) return;
+        }
+        throw new Error(`Text "${action.text}" not found`);
+      });
+
       for (const frame of page.frames()) {
-        if (frame !== page.mainFrame() && (await checkFrame(frame))) {
+        if (await checkFrame(frame)) {
           return `Found text "${action.text}"`;
         }
       }
@@ -129,15 +196,23 @@ async function executeAction(page: Page, action: BrowserTestAction): Promise<str
       return `Pressed ${action.key}`;
     case "scroll": {
       const locator = await resolveLocator(page, action.target);
-      await locator.scrollIntoViewIfNeeded({ timeout: STEP_TIMEOUT });
-      await page.waitForTimeout(400);
+      await retry(ACTION_RETRIES, async () => {
+        await locator.scrollIntoViewIfNeeded({ timeout: STEP_TIMEOUT });
+        await page.waitForTimeout(400);
+      });
       return `Scrolled to "${action.target}"`;
     }
     case "submit": {
       const label = action.target ?? "Send message";
       const locator = await resolveLocator(page, label);
-      await locator.click({ timeout: STEP_TIMEOUT });
-      await page.waitForTimeout(800);
+      await retry(ACTION_RETRIES, async (attempt) => {
+        if (attempt === 1) {
+          await locator.click({ timeout: STEP_TIMEOUT });
+        } else {
+          await locator.press("Enter", { timeout: STEP_TIMEOUT }).catch(() => undefined);
+        }
+        await page.waitForTimeout(800);
+      });
       return `Submitted form via "${label}"`;
     }
   }
@@ -230,7 +305,7 @@ export async function runBrowserTest(options: {
 
   try {
     const navStart = Date.now();
-    await page.goto(options.url, { waitUntil: "domcontentloaded", timeout: 30_000 });
+    await navigateWithRetry(page, options.url);
     await dismissConsentIfPresent(page);
     await page.waitForTimeout(600);
 

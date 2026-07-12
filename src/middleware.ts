@@ -1,13 +1,15 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-const CANONICAL_HOST = "shipcheck.safdarali.in";
+const CANONICAL_HOST = process.env.CANONICAL_HOST?.toLowerCase().trim();
 
 export function middleware(request: NextRequest) {
-  const host = request.headers.get("host") ?? "";
+  const rawHost = (request.headers.get("host") ?? "").toLowerCase();
+  const host = rawHost.split(":")[0];
   const isLocal = host.includes("localhost") || host.includes("127.0.0.1");
+  const isVercelHost = host.endsWith(".vercel.app");
 
-  if (!isLocal && host !== CANONICAL_HOST) {
+  if (CANONICAL_HOST && !isLocal && !isVercelHost && host !== CANONICAL_HOST) {
     const url = request.nextUrl.clone();
     url.host = CANONICAL_HOST;
     url.protocol = "https:";

@@ -54,9 +54,15 @@ Open [http://localhost:3000](http://localhost:3000).
 
 No required env vars for local development.
 
-For production on Vercel, Playwright needs the `@playwright/browser-chromium` or serverless-compatible setup. On Vercel, consider using `@sparticuz/chromium` for serverless Playwright.
-
 Optional:
+
+```env
+# If set, middleware redirects custom hosts to this canonical domain.
+# Leave unset to avoid forced redirects.
+CANONICAL_HOST=shipcheck.safdarali.in
+```
+
+For production on Vercel, Playwright needs the `@playwright/browser-chromium` or serverless-compatible setup. On Vercel, consider using `@sparticuz/chromium` for serverless Playwright.
 
 ```env
 # Analytics (auto-enabled via @vercel/analytics)

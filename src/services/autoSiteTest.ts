@@ -17,6 +17,7 @@ const STEP_TIMEOUT = 15_000;
 const TOTAL_TIMEOUT = 180_000;
 const MAX_PAGES = 5;
 const MAX_STEPS = 24;
+const NAV_RETRIES = 2;
 
 const SKIP_FORM =
   /password|login|signin|sign-in|checkout|payment|billing|credit|cvv|card/i;
@@ -41,6 +42,24 @@ async function dismissConsentIfPresent(page: Page): Promise<void> {
 async function screenshotToDataUrl(page: Page): Promise<string> {
   const buffer = await page.screenshot({ fullPage: false, type: "png" });
   return `data:image/png;base64,${Buffer.from(buffer).toString("base64")}`;
+}
+
+async function navigateWithRetry(page: Page, url: string): Promise<void> {
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= NAV_RETRIES; attempt++) {
+    try {
+      const waitUntil = attempt === 1 ? "domcontentloaded" : "load";
+      await page.goto(url, { waitUntil, timeout: 30_000 });
+      await page.waitForTimeout(500);
+      return;
+    } catch (error) {
+      lastError = error;
+      if (attempt < NAV_RETRIES) {
+        await page.waitForTimeout(600 * attempt);
+      }
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error(`Failed to load ${url}`);
 }
 
 async function discoverInternalLinks(page: Page, origin: string): Promise<string[]> {
@@ -264,14 +283,13 @@ export async function runAutoSiteTest(options: {
       visited.add(normalized);
 
       if (visited.size === 1) {
-        await page.goto(normalized, { waitUntil: "domcontentloaded", timeout: 30_000 });
+        await navigateWithRetry(page, normalized);
         await dismissConsentIfPresent(page);
         await page.waitForTimeout(600);
         await push(`Navigate to ${normalized}`, "navigate", async () => "Page loaded successfully");
       } else {
         await push(`Navigate to ${normalized}`, "navigate", async () => {
-          await page.goto(normalized, { waitUntil: "domcontentloaded", timeout: 30_000 });
-          await page.waitForTimeout(600);
+          await navigateWithRetry(page, normalized);
           return "Page loaded successfully";
         });
       }
