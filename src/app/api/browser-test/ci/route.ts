@@ -1,28 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { executeBrowserTestRequest } from "@/lib/browserTestExecution";
+import { extractCiToken, isCiAuthorized } from "@/lib/ciAuth";
 import { sendNotification } from "@/lib/notifications";
-import { cleanupOldReports, listRecentReports } from "@/lib/reportStorage";
-import { checkRateLimit } from "@/lib/security";
-import { browserTestRequestSchema } from "@/lib/validation";
+import { ciHookRequestSchema } from "@/lib/validation";
 
 export const runtime = "nodejs";
 export const maxDuration = 180;
 
-export async function GET() {
-  void cleanupOldReports();
-  const reports = await listRecentReports();
-  return NextResponse.json({ reports });
-}
-
 export async function POST(request: NextRequest) {
-  const ip =
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "anonymous";
+  const providedToken = extractCiToken(
+    request.headers.get("authorization"),
+    request.headers.get("x-ci-token"),
+  );
 
-  if (!checkRateLimit(`browser-test:${ip}`, 5, 60_000)) {
-    return NextResponse.json(
-      { error: "Rate limit exceeded. Try again in a minute." },
-      { status: 429 },
-    );
+  if (!isCiAuthorized(process.env.CI_HOOK_TOKEN, providedToken)) {
+    return NextResponse.json({ error: "Unauthorized CI hook token" }, { status: 401 });
   }
 
   let body: unknown;
@@ -32,7 +24,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const parsed = browserTestRequestSchema.safeParse(body);
+  const parsed = ciHookRequestSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json(
       { error: parsed.error.issues[0]?.message ?? "Invalid request" },
@@ -43,12 +35,23 @@ export async function POST(request: NextRequest) {
   try {
     const { report, planner, shareUrl } = await executeBrowserTestRequest(parsed.data);
     await sendNotification({
-      webhookUrl: parsed.data.notifyWebhook,
+      webhookUrl: parsed.data.notifyWebhook ?? process.env.CI_NOTIFY_WEBHOOK,
       report,
       shareUrl,
-      source: "manual",
+      source: "ci",
+      ci: parsed.data.ci ?? undefined,
     }).catch(() => undefined);
-    return NextResponse.json({ ...report, planner, shareUrl });
+
+    return NextResponse.json({
+      ok: report.status === "pass",
+      planner,
+      shareUrl,
+      reportId: report.id,
+      status: report.status,
+      summary: report.summary,
+      durationMs: report.durationMs,
+      ci: parsed.data.ci ?? null,
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Browser test failed";
     return NextResponse.json({ error: message }, { status: 400 });

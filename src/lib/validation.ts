@@ -32,6 +32,7 @@ export const browserTestRequestSchema = z
     viewport: z.enum(["desktop", "tablet", "mobile"]).default("desktop"),
     preset: z.enum(["portfolio-full", "auto"]).optional(),
     mode: z.enum(["auto"]).optional(),
+    notifyWebhook: urlSchema.optional(),
   })
   .refine(
     (data) => {
@@ -45,6 +46,23 @@ export const browserTestRequestSchema = z
 export type ScreenshotRequest = z.infer<typeof screenshotRequestSchema>;
 export type CompareUrlsInput = z.infer<typeof compareUrlsSchema>;
 export type BrowserTestRequest = z.infer<typeof browserTestRequestSchema>;
+
+export const ciMetadataSchema = z
+  .object({
+    provider: z.string().trim().max(100).optional(),
+    project: z.string().trim().max(200).optional(),
+    branch: z.string().trim().max(200).optional(),
+    commit: z.string().trim().max(200).optional(),
+    buildUrl: urlSchema.optional(),
+    actor: z.string().trim().max(120).optional(),
+  })
+  .optional();
+
+export const ciHookRequestSchema = browserTestRequestSchema.extend({
+  ci: ciMetadataSchema,
+});
+
+export type CiHookRequest = z.infer<typeof ciHookRequestSchema>;
 
 export function validateImageFile(file: File): string | null {
   const allowed = ["image/png", "image/jpeg", "image/webp"];

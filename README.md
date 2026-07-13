@@ -21,6 +21,8 @@ It combines:
 - Safer form handling (skips sensitive login/payment patterns)
 - Console + network logs in report
 - Run history + shareable report URLs (`/reports/:id`)
+- CI hook endpoint for pipeline-triggered smoke tests
+- Optional webhook notifications for manual or CI runs
 
 ### 2) Visual Diff
 - Upload mode (PNG/JPEG/WebP)
@@ -76,6 +78,15 @@ Optional:
 # Optional canonical redirect target.
 # Leave unset if you want Vercel domain and custom domain to both work.
 CANONICAL_HOST=shipcheck.safdarali.in
+
+# Required only for CI hook endpoint auth.
+CI_HOOK_TOKEN=your-long-random-token
+
+# Optional default notification webhook for CI hook runs.
+CI_NOTIFY_WEBHOOK=https://hooks.slack.com/services/...
+
+# Optional base URL used in notification share links.
+NEXT_PUBLIC_APP_URL=https://shipcheck-seven.vercel.app
 ```
 
 ## API Endpoints
@@ -84,7 +95,36 @@ CANONICAL_HOST=shipcheck.safdarali.in
 - `GET /api/browser-test` -> list recent runs
 - `GET /api/browser-test/[id]` -> fetch one report JSON
 - `GET /api/browser-test/video/[id]` -> fetch replay video
+- `POST /api/browser-test/ci` -> CI trigger (requires token)
 - `POST /api/screenshot` -> screenshot capture for visual diff
+
+### CI Hook payload example
+
+```json
+{
+  "url": "https://example.com",
+  "mode": "auto",
+  "viewport": "desktop",
+  "notifyWebhook": "https://hooks.slack.com/services/...",
+  "ci": {
+    "provider": "github-actions",
+    "project": "shipcheck",
+    "branch": "main",
+    "commit": "abc123",
+    "buildUrl": "https://github.com/org/repo/actions/runs/123",
+    "actor": "safdar-ali"
+  }
+}
+```
+
+Example request:
+
+```bash
+curl -X POST "https://your-domain/api/browser-test/ci" \
+  -H "Content-Type: application/json" \
+  -H "x-ci-token: $CI_HOOK_TOKEN" \
+  -d '{"url":"https://example.com","mode":"auto","viewport":"desktop"}'
+```
 
 ## Test Cases
 
@@ -93,6 +133,8 @@ CANONICAL_HOST=shipcheck.safdarali.in
 - Compare math and image validation
 - Canonical host redirect logic
 - Auto-journey helper scoring + URL normalization
+- CI hook auth helper coverage
+- Notification payload formatting coverage
 
 ### Manual QA Cases (recommended before release)
 1. Run auto test on `https://example.com` and verify report renders steps, logs, and replay.
@@ -103,6 +145,9 @@ CANONICAL_HOST=shipcheck.safdarali.in
 6. Verify visual diff in URL mode at all 3 viewports.
 7. Validate no forced redirect happens when `CANONICAL_HOST` is unset.
 8. Validate canonical redirect works for custom hosts when `CANONICAL_HOST` is set.
+9. Trigger `POST /api/browser-test/ci` with valid token and confirm share URL in response.
+10. Trigger CI hook with invalid token and verify it returns `401`.
+11. Provide `notifyWebhook` and confirm notification payload arrives.
 
 ## Deployment Notes (Vercel)
 
