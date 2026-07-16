@@ -1,6 +1,6 @@
 import fs from "fs/promises";
 import path from "path";
-import type { Page } from "playwright";
+import type { Page } from "playwright-core";
 import { getViewportConfig } from "@/lib/validation";
 import type { ViewportId } from "@/lib/constants";
 import { cleanupOldReports, saveReportVideo } from "@/lib/reportStorage";
@@ -166,7 +166,7 @@ async function executeAction(page: Page, action: BrowserTestAction): Promise<str
     }
     case "assertText": {
       const regex = new RegExp(action.text, "i");
-      const checkFrame = async (frame: Page | import("playwright").Frame): Promise<boolean> => {
+      const checkFrame = async (frame: Page | import("playwright-core").Frame): Promise<boolean> => {
         const text = await frame.locator("body").innerText().catch(() => "");
         return regex.test(text);
       };

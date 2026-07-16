@@ -1,3 +1,5 @@
+import { timingSafeEqual } from "crypto";
+
 const BLOCKED_HOSTNAMES = new Set([
   "localhost",
   "127.0.0.1",
@@ -46,6 +48,27 @@ export function assertSafeUrl(rawUrl: string): URL {
   }
 
   return parsed;
+}
+
+export function assertSafeWebhookUrl(rawUrl: string): URL {
+  const parsed = assertSafeUrl(rawUrl);
+
+  if (parsed.protocol !== "https:") {
+    throw new Error("Webhook URLs must use HTTPS");
+  }
+
+  return parsed;
+}
+
+export function safeCompareSecret(expected: string, provided: string): boolean {
+  const expectedBuf = Buffer.from(expected);
+  const providedBuf = Buffer.from(provided);
+
+  if (expectedBuf.length !== providedBuf.length) {
+    return false;
+  }
+
+  return timingSafeEqual(expectedBuf, providedBuf);
 }
 
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();

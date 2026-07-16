@@ -1,4 +1,5 @@
 import { SITE_URL } from "@/lib/constants";
+import { assertSafeWebhookUrl } from "@/lib/security";
 import type { BrowserTestReport } from "@/types/browserTest";
 
 export interface CiNotificationMeta {
@@ -56,6 +57,8 @@ export function buildNotificationPayload(options: NotificationOptions) {
 export async function sendNotification(options: NotificationOptions): Promise<void> {
   const webhook = options.webhookUrl?.trim();
   if (!webhook) return;
+
+  assertSafeWebhookUrl(webhook);
 
   const payload = buildNotificationPayload(options);
   const response = await fetch(webhook, {
