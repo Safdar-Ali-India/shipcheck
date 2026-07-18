@@ -2,41 +2,43 @@ import { NextRequest, NextResponse } from "next/server";
 import { executeBrowserTestRequest } from "@/lib/browserTestExecution";
 import { sendNotification } from "@/lib/notifications";
 import { cleanupOldReports, listRecentReports } from "@/lib/reportStorage";
-import { checkRateLimit } from "@/lib/security";
+import { enforcePublicQuota, withQuotaHeaders } from "@/lib/requestQuota";
 import { browserTestRequestSchema } from "@/lib/validation";
 
 export const runtime = "nodejs";
 export const maxDuration = 180;
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const quota = enforcePublicQuota(request.headers, "history");
+  if (!quota.ok) return quota.response;
+
   void cleanupOldReports();
   const reports = await listRecentReports();
-  return NextResponse.json({ reports });
+  return withQuotaHeaders(NextResponse.json({ reports }), quota.decision);
 }
 
 export async function POST(request: NextRequest) {
-  const ip =
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "anonymous";
-
-  if (!checkRateLimit(`browser-test:${ip}`, 5, 60_000)) {
-    return NextResponse.json(
-      { error: "Rate limit exceeded. Try again in a minute." },
-      { status: 429 },
-    );
-  }
+  const quota = enforcePublicQuota(request.headers, "browserTest");
+  if (!quota.ok) return quota.response;
 
   let body: unknown;
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    return withQuotaHeaders(
+      NextResponse.json({ error: "Invalid JSON body" }, { status: 400 }),
+      quota.decision,
+    );
   }
 
   const parsed = browserTestRequestSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json(
-      { error: parsed.error.issues[0]?.message ?? "Invalid request" },
-      { status: 400 },
+    return withQuotaHeaders(
+      NextResponse.json(
+        { error: parsed.error.issues[0]?.message ?? "Invalid request" },
+        { status: 400 },
+      ),
+      quota.decision,
     );
   }
 
@@ -48,9 +50,15 @@ export async function POST(request: NextRequest) {
       shareUrl,
       source: "manual",
     }).catch(() => undefined);
-    return NextResponse.json({ ...report, planner, shareUrl });
+    return withQuotaHeaders(
+      NextResponse.json({ ...report, planner, shareUrl }),
+      quota.decision,
+    );
   } catch (error) {
     const message = error instanceof Error ? error.message : "Browser test failed";
-    return NextResponse.json({ error: message }, { status: 400 });
+    return withQuotaHeaders(
+      NextResponse.json({ error: message }, { status: 400 }),
+      quota.decision,
+    );
   }
 }
