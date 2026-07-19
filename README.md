@@ -103,6 +103,9 @@ QUOTA_CI_BURST=20
 QUOTA_CI_DAILY=200
 QUOTA_HISTORY_BURST=60
 QUOTA_HISTORY_DAILY=1000
+
+# Optional remote Chromium pack for Vercel (defaults to Sparticuz v149 x64).
+CHROMIUM_REMOTE_PACK_URL=https://github.com/Sparticuz/chromium/releases/download/v149.0.0/chromium-v149.0.0-pack.x64.tar
 ```
 
 ### Default free quotas (per client IP)

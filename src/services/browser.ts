@@ -2,18 +2,23 @@ import { chromium, type Browser } from "playwright-core";
 
 let browserInstance: Browser | null = null;
 
+/** Remote Chromium pack for Vercel/Lambda (matches @sparticuz/chromium-min major). */
+const CHROMIUM_PACK_URL =
+  process.env.CHROMIUM_REMOTE_PACK_URL?.trim() ||
+  "https://github.com/Sparticuz/chromium/releases/download/v149.0.0/chromium-v149.0.0-pack.x64.tar";
+
 export function isServerlessRuntime() {
   return Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
 }
 
 async function getLaunchOptions() {
-  const baseArgs = ["--no-sandbox", "--disable-setuid-sandbox"];
+  const baseArgs = ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"];
 
   if (isServerlessRuntime()) {
-    const serverlessChromium = (await import("@sparticuz/chromium")).default;
+    const serverlessChromium = (await import("@sparticuz/chromium-min")).default;
     return {
       args: [...serverlessChromium.args, ...baseArgs],
-      executablePath: await serverlessChromium.executablePath(),
+      executablePath: await serverlessChromium.executablePath(CHROMIUM_PACK_URL),
       headless: true,
     };
   }
