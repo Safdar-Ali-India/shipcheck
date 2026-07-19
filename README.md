@@ -32,9 +32,15 @@ It combines:
 
 ### 3) Security & Reliability
 - SSRF protection (`assertSafeUrl`)
-- In-memory rate limiting
 - Retry + fallback strategies for flaky page load/selectors
 - Configurable canonical redirect (`CANONICAL_HOST`) with safe fallback behavior
+
+### 4) Public Quotas (free-tier safety)
+- Dual-window limits: **burst (per minute)** + **daily**
+- Applied to browser-test, screenshot, history, and CI hook routes
+- Standard headers: `X-RateLimit-*`, `Retry-After`
+- Clear `429` payload with `QUOTA_BURST` / `QUOTA_DAILY` codes
+- Env-tunable limits (no Redis/DB required for MVP)
 
 ## Tech Stack
 
@@ -87,7 +93,26 @@ CI_NOTIFY_WEBHOOK=https://hooks.slack.com/services/...
 
 # Optional base URL used in notification share links.
 NEXT_PUBLIC_APP_URL=https://shipcheck-seven.vercel.app
+
+# Optional public quota overrides (defaults shown).
+QUOTA_BROWSER_TEST_BURST=5
+QUOTA_BROWSER_TEST_DAILY=30
+QUOTA_SCREENSHOT_BURST=15
+QUOTA_SCREENSHOT_DAILY=100
+QUOTA_CI_BURST=20
+QUOTA_CI_DAILY=200
+QUOTA_HISTORY_BURST=60
+QUOTA_HISTORY_DAILY=1000
 ```
+
+### Default free quotas (per client IP)
+
+| Endpoint | Burst | Daily |
+| --- | --- | --- |
+| `POST /api/browser-test` | 5 / min | 30 / day |
+| `POST /api/screenshot` | 15 / min | 100 / day |
+| `GET /api/browser-test` | 60 / min | 1000 / day |
+| `POST /api/browser-test/ci` | 20 / min | 200 / day |
 
 ## API Endpoints
 
@@ -135,6 +160,7 @@ curl -X POST "https://your-domain/api/browser-test/ci" \
 - Auto-journey helper scoring + URL normalization
 - CI hook auth helper coverage
 - Notification payload formatting coverage
+- Quota windows (burst/daily), env overrides, IP parsing, rate-limit headers
 
 ### Manual QA Cases (recommended before release)
 1. Run auto test on `https://example.com` and verify report renders steps, logs, and replay.
@@ -148,6 +174,8 @@ curl -X POST "https://your-domain/api/browser-test/ci" \
 9. Trigger `POST /api/browser-test/ci` with valid token and confirm share URL in response.
 10. Trigger CI hook with invalid token and verify it returns `401`.
 11. Provide `notifyWebhook` and confirm notification payload arrives.
+12. Hit `POST /api/browser-test` until burst quota trips → expect `429` + `Retry-After`.
+13. Confirm successful responses include `X-RateLimit-Remaining` headers.
 
 ## Deployment Notes (Vercel)
 
