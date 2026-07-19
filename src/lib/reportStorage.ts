@@ -1,23 +1,20 @@
 import fs from "fs/promises";
 import path from "path";
+import { getReportsDir } from "@/lib/tmpPaths";
 import type { BrowserTestHistoryItem, BrowserTestReport } from "@/types/browserTest";
 
-const REPORTS_DIR = path.join(process.cwd(), ".tmp", "reports");
-
-export function getReportsDir() {
-  return REPORTS_DIR;
-}
+export { getReportsDir };
 
 export function getReportVideoPath(reportId: string) {
-  return path.join(REPORTS_DIR, `${reportId}.webm`);
+  return path.join(getReportsDir(), `${reportId}.webm`);
 }
 
 export function getReportJsonPath(reportId: string) {
-  return path.join(REPORTS_DIR, `${reportId}.json`);
+  return path.join(getReportsDir(), `${reportId}.json`);
 }
 
 export async function ensureReportsDir() {
-  await fs.mkdir(REPORTS_DIR, { recursive: true });
+  await fs.mkdir(getReportsDir(), { recursive: true });
 }
 
 export async function saveReportVideo(reportId: string, sourcePath: string): Promise<boolean> {
@@ -61,13 +58,13 @@ export async function readReportJson(reportId: string): Promise<BrowserTestRepor
 export async function listRecentReports(limit = 20): Promise<BrowserTestHistoryItem[]> {
   try {
     await ensureReportsDir();
-    const files = await fs.readdir(REPORTS_DIR);
+    const files = await fs.readdir(getReportsDir());
     const jsonFiles = files.filter((file) => file.endsWith(".json"));
 
     const reports = await Promise.all(
       jsonFiles.map(async (file) => {
         try {
-          const filePath = path.join(REPORTS_DIR, file);
+          const filePath = path.join(getReportsDir(), file);
           const raw = await fs.readFile(filePath, "utf8");
           const report = JSON.parse(raw) as BrowserTestReport;
           const stat = await fs.stat(filePath);
@@ -108,11 +105,11 @@ export async function listRecentReports(limit = 20): Promise<BrowserTestHistoryI
 export async function cleanupOldReports(maxAgeMs = 60 * 60 * 1000) {
   try {
     await ensureReportsDir();
-    const files = await fs.readdir(REPORTS_DIR);
+    const files = await fs.readdir(getReportsDir());
     const now = Date.now();
     await Promise.all(
       files.map(async (file) => {
-        const filePath = path.join(REPORTS_DIR, file);
+        const filePath = path.join(getReportsDir(), file);
         const stat = await fs.stat(filePath);
         if (now - stat.mtimeMs > maxAgeMs) {
           await fs.unlink(filePath).catch(() => undefined);

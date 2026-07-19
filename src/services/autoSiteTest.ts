@@ -4,6 +4,7 @@ import type { Page } from "playwright-core";
 import { getViewportConfig } from "@/lib/validation";
 import type { ViewportId } from "@/lib/constants";
 import { cleanupOldReports, saveReportVideo } from "@/lib/reportStorage";
+import { getVideoSessionDir } from "@/lib/tmpPaths";
 import { BROWSER_USER_AGENT, getBrowser } from "@/services/browser";
 import type {
   BrowserTestReport,
@@ -348,7 +349,7 @@ export async function runAutoSiteTest(options: {
 
   const config = getViewportConfig(options.viewport);
   const browser = await getBrowser();
-  const videoDir = path.join(process.cwd(), ".tmp", "shipcheck-videos", reportId);
+  const videoDir = getVideoSessionDir(reportId);
   await fs.mkdir(videoDir, { recursive: true });
   void cleanupOldReports();
 
