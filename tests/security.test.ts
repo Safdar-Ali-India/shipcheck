@@ -1,6 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { isCiAuthorized } from "@/lib/ciAuth";
-import { isServerlessRuntime } from "@/services/browser";
+import { isServerlessRuntime, shouldRecordVideo } from "@/services/browser";
 import { sendNotification } from "@/lib/notifications";
 import { assertSafeUrl, assertSafeWebhookUrl, checkRateLimit, safeCompareSecret } from "@/lib/security";
 import { browserTestRequestSchema, ciHookRequestSchema } from "@/lib/validation";
@@ -163,6 +163,35 @@ describe("isServerlessRuntime", () => {
     if (originalLambda !== undefined) {
       process.env.AWS_LAMBDA_FUNCTION_NAME = originalLambda;
     }
+  });
+});
+
+describe("shouldRecordVideo", () => {
+  const keys = ["VERCEL", "AWS_LAMBDA_FUNCTION_NAME", "SHIPCHECK_FORCE_VIDEO", "SHIPCHECK_DISABLE_VIDEO"] as const;
+  const originals: Record<string, string | undefined> = {};
+
+  beforeEach(() => {
+    for (const key of keys) originals[key] = process.env[key];
+  });
+
+  afterEach(() => {
+    for (const key of keys) {
+      if (originals[key] === undefined) delete process.env[key];
+      else process.env[key] = originals[key];
+    }
+  });
+
+  it("disables video on Vercel by default", () => {
+    process.env.VERCEL = "1";
+    delete process.env.SHIPCHECK_FORCE_VIDEO;
+    delete process.env.SHIPCHECK_DISABLE_VIDEO;
+    expect(shouldRecordVideo()).toBe(false);
+  });
+
+  it("allows force-enable override", () => {
+    process.env.VERCEL = "1";
+    process.env.SHIPCHECK_FORCE_VIDEO = "1";
+    expect(shouldRecordVideo()).toBe(true);
   });
 });
 

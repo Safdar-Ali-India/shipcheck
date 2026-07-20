@@ -11,6 +11,16 @@ export function isServerlessRuntime() {
   return Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
 }
 
+/**
+ * Playwright video needs a local ffmpeg binary. Vercel/Lambda don't ship one,
+ * so keep screenshots/logs and skip video there (local/dev still records).
+ */
+export function shouldRecordVideo() {
+  if (process.env.SHIPCHECK_FORCE_VIDEO === "1") return true;
+  if (process.env.SHIPCHECK_DISABLE_VIDEO === "1") return false;
+  return !isServerlessRuntime();
+}
+
 async function getLaunchOptions() {
   const baseArgs = ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"];
 

@@ -4,7 +4,7 @@ import { getViewportConfig } from "@/lib/validation";
 import type { ViewportId } from "@/lib/constants";
 import { cleanupOldReports, saveReportVideo } from "@/lib/reportStorage";
 import { getVideoSessionDir } from "@/lib/tmpPaths";
-import { BROWSER_USER_AGENT, getBrowser } from "@/services/browser";
+import { BROWSER_USER_AGENT, getBrowser, shouldRecordVideo } from "@/services/browser";
 import { describeAction } from "@/services/testPlanner";
 import type {
   BrowserTestAction,
@@ -239,8 +239,11 @@ export async function runBrowserTest(options: {
   const testStart = Date.now();
   const config = getViewportConfig(options.viewport);
   const browser = await getBrowser();
+  const recordVideo = shouldRecordVideo();
   const videoDir = getVideoSessionDir(reportId);
-  await fs.mkdir(videoDir, { recursive: true });
+  if (recordVideo) {
+    await fs.mkdir(videoDir, { recursive: true });
+  }
 
   void cleanupOldReports();
 
@@ -248,10 +251,14 @@ export async function runBrowserTest(options: {
     viewport: { width: config.width, height: config.height },
     deviceScaleFactor: config.deviceScaleFactor,
     userAgent: BROWSER_USER_AGENT,
-    recordVideo: {
-      dir: videoDir,
-      size: { width: config.width, height: config.height },
-    },
+    ...(recordVideo
+      ? {
+          recordVideo: {
+            dir: videoDir,
+            size: { width: config.width, height: config.height },
+          },
+        }
+      : {}),
   });
 
   const page = await context.newPage();
