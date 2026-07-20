@@ -1,4 +1,7 @@
-import { chromium, type Browser } from "playwright-core";
+import path from "path";
+import { chromium, type Browser, type BrowserContext } from "playwright-core";
+import type { ViewportId } from "@/lib/constants";
+import { getViewportConfig } from "@/lib/validation";
 
 let browserInstance: Browser | null = null;
 
@@ -22,13 +25,23 @@ export function shouldRecordVideo() {
 }
 
 async function getLaunchOptions() {
-  const baseArgs = ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"];
-
   if (isServerlessRuntime()) {
+    if (!process.env.AWS_LAMBDA_JS_RUNTIME) {
+      process.env.AWS_LAMBDA_JS_RUNTIME = "nodejs22.x";
+    }
+
     const serverlessChromium = (await import("@sparticuz/chromium-min")).default;
+    // Property assignment (not a method) — disables WebGL/swiftshader crashes on Lambda.
+    serverlessChromium.setGraphicsMode = false;
+
+    const executablePath = await serverlessChromium.executablePath(CHROMIUM_PACK_URL);
+    const execDir = path.dirname(executablePath);
+    const existingLd = process.env.LD_LIBRARY_PATH?.trim();
+    process.env.LD_LIBRARY_PATH = existingLd ? `${execDir}:${existingLd}` : execDir;
+
     return {
-      args: [...serverlessChromium.args, ...baseArgs],
-      executablePath: await serverlessChromium.executablePath(CHROMIUM_PACK_URL),
+      args: serverlessChromium.args,
+      executablePath,
       headless: true,
     };
   }
@@ -48,24 +61,76 @@ async function getLaunchOptions() {
 
   return {
     headless: true,
-    args: baseArgs,
+    args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
     executablePath,
   };
 }
 
 export async function getBrowser(): Promise<Browser> {
-  if (browserInstance?.isConnected()) {
+  // Fresh browser per invocation on serverless — reused instances often die mid-request.
+  if (!isServerlessRuntime() && browserInstance?.isConnected()) {
     return browserInstance;
   }
+
+  if (browserInstance) {
+    await browserInstance.close().catch(() => undefined);
+    browserInstance = null;
+  }
+
   browserInstance = await chromium.launch(await getLaunchOptions());
   return browserInstance;
 }
 
 export async function closeBrowser() {
   if (browserInstance) {
-    await browserInstance.close();
+    await browserInstance.close().catch(() => undefined);
     browserInstance = null;
   }
+}
+
+export type TestSession = {
+  browser: Browser;
+  context: BrowserContext;
+  /** Call after the run to close context (and browser on serverless). */
+  dispose: () => Promise<void>;
+};
+
+/**
+ * Create a configured browser context for a test run.
+ * On Vercel, prefer a single short-lived browser; avoid leaking contexts.
+ */
+export async function createTestSession(options: {
+  viewport: ViewportId;
+  recordVideoDir?: string;
+}): Promise<TestSession> {
+  const config = getViewportConfig(options.viewport);
+  const browser = await getBrowser();
+  const serverless = isServerlessRuntime();
+
+  const context = await browser.newContext({
+    viewport: { width: config.width, height: config.height },
+    deviceScaleFactor: config.deviceScaleFactor,
+    userAgent: BROWSER_USER_AGENT,
+    ...(options.recordVideoDir
+      ? {
+          recordVideo: {
+            dir: options.recordVideoDir,
+            size: { width: config.width, height: config.height },
+          },
+        }
+      : {}),
+  });
+
+  return {
+    browser,
+    context,
+    dispose: async () => {
+      await context.close().catch(() => undefined);
+      if (serverless) {
+        await closeBrowser();
+      }
+    },
+  };
 }
 
 export const BROWSER_USER_AGENT =

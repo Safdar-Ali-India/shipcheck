@@ -4,7 +4,7 @@ import { getViewportConfig } from "@/lib/validation";
 import type { ViewportId } from "@/lib/constants";
 import { cleanupOldReports, saveReportVideo } from "@/lib/reportStorage";
 import { getVideoSessionDir } from "@/lib/tmpPaths";
-import { BROWSER_USER_AGENT, getBrowser, shouldRecordVideo } from "@/services/browser";
+import { createTestSession, shouldRecordVideo } from "@/services/browser";
 import { describeAction } from "@/services/testPlanner";
 import type {
   BrowserTestAction,
@@ -238,7 +238,6 @@ export async function runBrowserTest(options: {
   const startedAt = new Date().toISOString();
   const testStart = Date.now();
   const config = getViewportConfig(options.viewport);
-  const browser = await getBrowser();
   const recordVideo = shouldRecordVideo();
   const videoDir = getVideoSessionDir(reportId);
   if (recordVideo) {
@@ -247,19 +246,11 @@ export async function runBrowserTest(options: {
 
   void cleanupOldReports();
 
-  const context = await browser.newContext({
-    viewport: { width: config.width, height: config.height },
-    deviceScaleFactor: config.deviceScaleFactor,
-    userAgent: BROWSER_USER_AGENT,
-    ...(recordVideo
-      ? {
-          recordVideo: {
-            dir: videoDir,
-            size: { width: config.width, height: config.height },
-          },
-        }
-      : {}),
+  const session = await createTestSession({
+    viewport: options.viewport,
+    recordVideoDir: recordVideo ? videoDir : undefined,
   });
+  const { context } = session;
 
   const page = await context.newPage();
   page.setDefaultTimeout(STEP_TIMEOUT);
@@ -389,9 +380,9 @@ export async function runBrowserTest(options: {
       videoTimestampMs: 0,
     });
   } finally {
-    await page.waitForTimeout(300);
-    await page.close();
-    await context.close();
+    await page.waitForTimeout(300).catch(() => undefined);
+    await page.close().catch(() => undefined);
+    await session.dispose();
 
     if (videoHandle) {
       const rawPath = await videoHandle.path().catch(() => null);
