@@ -1,5 +1,4 @@
 import fs from "fs/promises";
-import path from "path";
 import type { Page } from "playwright-core";
 import { getViewportConfig } from "@/lib/validation";
 import type { ViewportId } from "@/lib/constants";
