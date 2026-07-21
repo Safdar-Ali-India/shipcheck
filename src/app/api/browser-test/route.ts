@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { executeBrowserTestRequest } from "@/lib/browserTestExecution";
+import { friendlyBrowserError } from "@/lib/pageSafety";
 import { sendNotification } from "@/lib/notifications";
 import { cleanupOldReports, listRecentReports } from "@/lib/reportStorage";
 import { enforcePublicQuota, withQuotaHeaders } from "@/lib/requestQuota";
@@ -55,7 +56,7 @@ export async function POST(request: NextRequest) {
       quota.decision,
     );
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Browser test failed";
+    const message = friendlyBrowserError(error);
     return withQuotaHeaders(
       NextResponse.json({ error: message }, { status: 400 }),
       quota.decision,

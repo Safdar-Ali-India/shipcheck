@@ -179,6 +179,7 @@ curl -X POST "https://your-domain/api/browser-test/ci" \
 11. Provide `notifyWebhook` and confirm notification payload arrives.
 12. Hit `POST /api/browser-test` until burst quota trips → expect `429` + `Retry-After`.
 13. Confirm successful responses include `X-RateLimit-Remaining` headers.
+14. On Vercel, confirm a light site (`example.com`) passes; heavy sites may fail with a clear "Browser crashed" message on free tier.
 
 ## Deployment Notes (Vercel)
 

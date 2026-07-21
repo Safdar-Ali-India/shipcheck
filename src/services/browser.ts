@@ -31,16 +31,25 @@ async function getLaunchOptions() {
     }
 
     const serverlessChromium = (await import("@sparticuz/chromium-min")).default;
-    // Property assignment (not a method) — disables WebGL/swiftshader crashes on Lambda.
-    serverlessChromium.setGraphicsMode = false;
+    // Disable WebGL/swiftshader — common Lambda crash source.
+    const chromiumApi = serverlessChromium as {
+      setGraphicsMode?: boolean | ((value: boolean) => void | Promise<void>);
+      args: string[];
+      executablePath: (input?: string) => Promise<string>;
+    };
+    if (typeof chromiumApi.setGraphicsMode === "function") {
+      await chromiumApi.setGraphicsMode(false);
+    } else {
+      chromiumApi.setGraphicsMode = false;
+    }
 
-    const executablePath = await serverlessChromium.executablePath(CHROMIUM_PACK_URL);
+    const executablePath = await chromiumApi.executablePath(CHROMIUM_PACK_URL);
     const execDir = path.dirname(executablePath);
     const existingLd = process.env.LD_LIBRARY_PATH?.trim();
     process.env.LD_LIBRARY_PATH = existingLd ? `${execDir}:${existingLd}` : execDir;
 
     return {
-      args: serverlessChromium.args,
+      args: chromiumApi.args,
       executablePath,
       headless: true,
     };
@@ -109,8 +118,10 @@ export async function createTestSession(options: {
 
   const context = await browser.newContext({
     viewport: { width: config.width, height: config.height },
-    deviceScaleFactor: config.deviceScaleFactor,
+    // Lower DPR on serverless to cut screenshot/memory cost.
+    deviceScaleFactor: serverless ? 1 : config.deviceScaleFactor,
     userAgent: BROWSER_USER_AGENT,
+    ignoreHTTPSErrors: true,
     ...(options.recordVideoDir
       ? {
           recordVideo: {

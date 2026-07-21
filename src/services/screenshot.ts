@@ -1,4 +1,5 @@
 import type { ViewportId } from "@/lib/constants";
+import { safeWait } from "@/lib/pageSafety";
 import { createTestSession } from "@/services/browser";
 
 export async function captureScreenshot(
@@ -10,8 +11,8 @@ export async function captureScreenshot(
   page.setDefaultTimeout(30_000);
 
   try {
-    await page.goto(url, { waitUntil: "networkidle", timeout: 30_000 });
-    await page.waitForTimeout(500);
+    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 30_000 });
+    await safeWait(page, 400);
     const buffer = await page.screenshot({ fullPage: true, type: "png" });
     return Buffer.from(buffer);
   } finally {

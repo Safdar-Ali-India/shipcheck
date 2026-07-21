@@ -1,6 +1,11 @@
 import fs from "fs/promises";
 import type { Page } from "playwright-core";
-import { getViewportConfig } from "@/lib/validation";
+import {
+  applyServerlessPageGuards,
+  friendlyBrowserError,
+  safeWait,
+  serverlessExploreLimits,
+} from "@/lib/pageSafety";
 import type { ViewportId } from "@/lib/constants";
 import { cleanupOldReports, saveReportVideo } from "@/lib/reportStorage";
 import { getVideoSessionDir } from "@/lib/tmpPaths";
@@ -13,10 +18,6 @@ import type {
   TestStepKind,
 } from "@/types/browserTest";
 
-const STEP_TIMEOUT = 15_000;
-const TOTAL_TIMEOUT = 180_000;
-const MAX_PAGES = 5;
-const MAX_STEPS = 24;
 const MAX_LINKS_PER_PAGE = 10;
 const NAV_RETRIES = 2;
 
@@ -86,9 +87,9 @@ export function normalizeJourneyUrl(raw: string, base?: string): string {
 async function dismissConsentIfPresent(page: Page): Promise<void> {
   for (const pattern of [/accept all/i, /i agree/i, /reject all/i, /got it/i]) {
     const btn = page.getByRole("button", { name: pattern });
-    if ((await btn.count()) > 0) {
+    if ((await btn.count().catch(() => 0)) > 0) {
       await btn.first().click({ timeout: 2000 }).catch(() => undefined);
-      await page.waitForTimeout(400);
+      await safeWait(page, 400);
       return;
     }
   }
@@ -99,18 +100,18 @@ async function screenshotToDataUrl(page: Page): Promise<string> {
   return `data:image/png;base64,${Buffer.from(buffer).toString("base64")}`;
 }
 
-async function navigateWithRetry(page: Page, url: string): Promise<void> {
+async function navigateWithRetry(page: Page, url: string, navTimeout: number): Promise<void> {
   let lastError: unknown;
   for (let attempt = 1; attempt <= NAV_RETRIES; attempt++) {
     try {
       const waitUntil = attempt === 1 ? "domcontentloaded" : "load";
-      await page.goto(url, { waitUntil, timeout: 30_000 });
-      await page.waitForTimeout(500);
+      await page.goto(url, { waitUntil, timeout: navTimeout });
+      await safeWait(page, 400);
       return;
     } catch (error) {
       lastError = error;
       if (attempt < NAV_RETRIES) {
-        await page.waitForTimeout(600 * attempt);
+        await safeWait(page, 500 * attempt);
       }
     }
   }
@@ -293,7 +294,7 @@ async function testFormsOnPage(page: Page, push: StepPush): Promise<void> {
               : "Automated test input";
 
       await push(`Fill "${label}"`, "action", async () => {
-        await input.fill(value, { timeout: STEP_TIMEOUT });
+        await input.fill(value, { timeout: serverlessExploreLimits().stepTimeout });
         return `Filled "${label}"`;
       });
     }
@@ -309,7 +310,7 @@ async function testFormsOnPage(page: Page, push: StepPush): Promise<void> {
         "message";
       await push(`Fill "${label}"`, "action", async () => {
         await ta.fill("Automated smoke test from ShipCheck — no reply needed.", {
-          timeout: STEP_TIMEOUT,
+          timeout: serverlessExploreLimits().stepTimeout,
         });
         return `Filled "${label}"`;
       });
@@ -322,8 +323,8 @@ async function testFormsOnPage(page: Page, push: StepPush): Promise<void> {
       const submitLabel =
         (await submit.first().innerText().catch(() => "")) || "Submit";
       await push(`Submit form via "${submitLabel.trim()}"`, "action", async () => {
-        await submit.first().click({ timeout: STEP_TIMEOUT });
-        await page.waitForTimeout(1500);
+        await submit.first().click({ timeout: serverlessExploreLimits().stepTimeout });
+        await safeWait(page, 1200);
         return `Submitted form`;
       });
       await push("Verify form response", "assert", async () => {
@@ -339,14 +340,14 @@ export async function runAutoSiteTest(options: {
   url: string;
   viewport: ViewportId;
 }): Promise<BrowserTestReport> {
+  const limits = serverlessExploreLimits();
   const reportId = crypto.randomUUID();
   const startedAt = new Date().toISOString();
   const testStart = Date.now();
-  const deadline = Date.now() + TOTAL_TIMEOUT;
+  const deadline = Date.now() + limits.totalTimeout;
   const origin = new URL(options.url).origin;
   const startUrl = normalizeJourneyUrl(options.url);
 
-  const config = getViewportConfig(options.viewport);
   const recordVideo = shouldRecordVideo();
   const videoDir = getVideoSessionDir(reportId);
   if (recordVideo) {
@@ -361,7 +362,8 @@ export async function runAutoSiteTest(options: {
   const { context } = session;
 
   const page = await context.newPage();
-  page.setDefaultTimeout(STEP_TIMEOUT);
+  page.setDefaultTimeout(limits.stepTimeout);
+  await applyServerlessPageGuards(context, page);
 
   const consoleLogs: ConsoleLogEntry[] = [];
   const networkLogs: NetworkLogEntry[] = [];
@@ -403,7 +405,7 @@ export async function runAutoSiteTest(options: {
   const videoHandle = page.video();
 
   const push: StepPush = async (instruction, kind, run) => {
-    if (stepResults.length >= MAX_STEPS) return;
+    if (stepResults.length >= limits.maxSteps) return;
     const stepStart = Date.now();
     const videoTimestampMs = Date.now() - testStart;
     try {
@@ -427,7 +429,7 @@ export async function runAutoSiteTest(options: {
         action: { type: "screenshot", label: instruction },
         kind,
         status: "fail",
-        message: error instanceof Error ? error.message : "Step failed",
+        message: friendlyBrowserError(error),
         durationMs: Date.now() - stepStart,
         videoTimestampMs,
         screenshot: await screenshotToDataUrl(page).catch(() => undefined),
@@ -441,7 +443,7 @@ export async function runAutoSiteTest(options: {
   const visitedPages: string[] = [];
 
   try {
-    while (queue.length > 0 && visited.size < MAX_PAGES && stepResults.length < MAX_STEPS) {
+    while (queue.length > 0 && visited.size < limits.maxPages && stepResults.length < limits.maxSteps) {
       if (Date.now() > deadline) break;
 
       queue.sort((a, b) => b.score - a.score);
@@ -457,13 +459,13 @@ export async function runAutoSiteTest(options: {
       visitedPages.push(new URL(normalized).pathname || "/");
 
       if (visited.size === 1) {
-        await navigateWithRetry(page, normalized);
+        await navigateWithRetry(page, normalized, limits.navTimeout);
         await dismissConsentIfPresent(page);
-        await page.waitForTimeout(600);
+        await safeWait(page, 400);
         await push(`Navigate to ${normalized}`, "navigate", async () => "Page loaded successfully");
       } else {
         await push(`Navigate to ${normalized}`, "navigate", async () => {
-          await navigateWithRetry(page, normalized);
+          await navigateWithRetry(page, normalized, limits.navTimeout);
           return "Page loaded successfully";
         });
       }
@@ -483,11 +485,11 @@ export async function runAutoSiteTest(options: {
 
       await testFormsOnPage(page, push).catch(() => undefined);
 
-      if (stepResults.length >= MAX_STEPS) break;
+      if (stepResults.length >= limits.maxSteps) break;
 
       await push("Scroll to page bottom", "action", async () => {
         await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
-        await page.waitForTimeout(500);
+        await safeWait(page, 400);
         return "Scrolled to bottom";
       });
 
@@ -537,13 +539,29 @@ export async function runAutoSiteTest(options: {
         action: { type: "screenshot", label: "Error" },
         kind: "navigate",
         status: "fail",
-        message: error instanceof Error ? error.message : "Failed to explore site",
+        message: friendlyBrowserError(error),
         durationMs: 0,
         videoTimestampMs: 0,
       });
+    } else {
+      overallStatus = "fail";
+      const last = stepResults[stepResults.length - 1];
+      if (last && last.status === "pass") {
+        // Surface a crash that happened between steps.
+        stepResults.push({
+          id: `step-${stepCounter++}`,
+          instruction: "Continue exploration",
+          action: { type: "screenshot", label: "Error" },
+          kind: "action",
+          status: "fail",
+          message: friendlyBrowserError(error),
+          durationMs: 0,
+          videoTimestampMs: Date.now() - testStart,
+        });
+      }
     }
   } finally {
-    await page.waitForTimeout(300).catch(() => undefined);
+    await safeWait(page, 200);
     await page.close().catch(() => undefined);
     await session.dispose();
     if (videoHandle) {
@@ -564,7 +582,7 @@ export async function runAutoSiteTest(options: {
     id: reportId,
     title: `${host} auto test — explore pages, fill forms, record video`,
     url: options.url,
-    instructions: `Auto-discovered test: visit up to ${MAX_PAGES} pages, fill safe forms, capture screenshots and video.`,
+    instructions: `Auto-discovered test: visit up to ${limits.maxPages} pages, fill safe forms, capture screenshots and video.`,
     viewport: options.viewport,
     status: overallStatus,
     summary:

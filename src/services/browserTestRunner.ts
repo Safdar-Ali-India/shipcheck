@@ -1,5 +1,10 @@
 import fs from "fs/promises";
 import type { Page } from "playwright-core";
+import {
+  applyServerlessPageGuards,
+  friendlyBrowserError,
+  safeWait,
+} from "@/lib/pageSafety";
 import { getViewportConfig } from "@/lib/validation";
 import type { ViewportId } from "@/lib/constants";
 import { cleanupOldReports, saveReportVideo } from "@/lib/reportStorage";
@@ -53,7 +58,7 @@ async function dismissConsentIfPresent(page: Page): Promise<void> {
   for (const locator of candidates) {
     if ((await locator.count()) > 0) {
       await locator.first().click({ timeout: 2000 }).catch(() => undefined);
-      await page.waitForTimeout(400);
+      await safeWait(page, 400);
       return;
     }
   }
@@ -94,7 +99,7 @@ async function navigateWithRetry(page: Page, url: string): Promise<void> {
   await retry(NAV_RETRIES, async (attempt) => {
     const waitUntil = attempt === 1 ? "domcontentloaded" : "load";
     await page.goto(url, { waitUntil, timeout: 30_000 });
-    await page.waitForTimeout(500);
+    await safeWait(page, 500);
   });
 }
 
@@ -189,7 +194,7 @@ async function executeAction(page: Page, action: BrowserTestAction): Promise<str
     case "screenshot":
       return "Screenshot captured";
     case "wait":
-      await page.waitForTimeout(action.ms);
+      await safeWait(page, action.ms);
       return `Waited ${action.ms}ms`;
     case "press":
       await page.keyboard.press(action.key);
@@ -198,7 +203,7 @@ async function executeAction(page: Page, action: BrowserTestAction): Promise<str
       const locator = await resolveLocator(page, action.target);
       await retry(ACTION_RETRIES, async () => {
         await locator.scrollIntoViewIfNeeded({ timeout: STEP_TIMEOUT });
-        await page.waitForTimeout(400);
+        await safeWait(page, 400);
       });
       return `Scrolled to "${action.target}"`;
     }
@@ -211,7 +216,7 @@ async function executeAction(page: Page, action: BrowserTestAction): Promise<str
         } else {
           await locator.press("Enter", { timeout: STEP_TIMEOUT }).catch(() => undefined);
         }
-        await page.waitForTimeout(800);
+        await safeWait(page, 800);
       });
       return `Submitted form via "${label}"`;
     }
@@ -254,6 +259,7 @@ export async function runBrowserTest(options: {
 
   const page = await context.newPage();
   page.setDefaultTimeout(STEP_TIMEOUT);
+  await applyServerlessPageGuards(context, page);
 
   const consoleLogs: ConsoleLogEntry[] = [];
   const networkLogs: NetworkLogEntry[] = [];
@@ -305,7 +311,7 @@ export async function runBrowserTest(options: {
     const navStart = Date.now();
     await navigateWithRetry(page, options.url);
     await dismissConsentIfPresent(page);
-    await page.waitForTimeout(600);
+    await safeWait(page, 600);
 
     stepResults.push({
       id: "step-0",
@@ -359,7 +365,7 @@ export async function runBrowserTest(options: {
           action,
           kind: actionKind(action),
           status: "fail",
-          message: error instanceof Error ? error.message : "Step failed",
+          message: friendlyBrowserError(error),
           durationMs: Date.now() - stepStart,
           videoTimestampMs,
           screenshot,
@@ -375,12 +381,12 @@ export async function runBrowserTest(options: {
       action: { type: "screenshot", label: "Error" },
       kind: "navigate",
       status: "fail",
-      message: error instanceof Error ? error.message : "Failed to load page",
+      message: friendlyBrowserError(error),
       durationMs: 0,
       videoTimestampMs: 0,
     });
   } finally {
-    await page.waitForTimeout(300).catch(() => undefined);
+    await safeWait(page, 300);
     await page.close().catch(() => undefined);
     await session.dispose();
 
