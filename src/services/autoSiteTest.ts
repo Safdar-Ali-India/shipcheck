@@ -9,7 +9,7 @@ import {
 import type { ViewportId } from "@/lib/constants";
 import { cleanupOldReports, saveReportVideo } from "@/lib/reportStorage";
 import { getVideoSessionDir } from "@/lib/tmpPaths";
-import { createTestSession, shouldRecordVideo } from "@/services/browser";
+import { createTestSession, isServerlessRuntime, shouldRecordVideo } from "@/services/browser";
 import type {
   BrowserTestReport,
   BrowserTestStepResult,
@@ -320,6 +320,14 @@ async function testFormsOnPage(page: Page, push: StepPush): Promise<void> {
       'button[type="submit"], input[type="submit"], button:has-text("Send"), button:has-text("Submit")',
     );
     if ((await submit.count()) > 0) {
+      // Hosted Chromium often stalls on Google/search submits; fill-only keeps smoke useful.
+      if (isServerlessRuntime()) {
+        await push("Skip form submit (hosted)", "action", async () => {
+          return "Filled fields only — submit skipped on free hosted runs";
+        });
+        continue;
+      }
+
       const submitLabel =
         (await submit.first().innerText().catch(() => "")) || "Submit";
       await push(`Submit form via "${submitLabel.trim()}"`, "action", async () => {

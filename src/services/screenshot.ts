@@ -1,6 +1,6 @@
 import type { ViewportId } from "@/lib/constants";
-import { safeWait } from "@/lib/pageSafety";
-import { createTestSession } from "@/services/browser";
+import { applyServerlessPageGuards, safeWait } from "@/lib/pageSafety";
+import { createTestSession, isServerlessRuntime } from "@/services/browser";
 
 export async function captureScreenshot(
   url: string,
@@ -8,12 +8,17 @@ export async function captureScreenshot(
 ): Promise<Buffer> {
   const session = await createTestSession({ viewport });
   const page = await session.context.newPage();
-  page.setDefaultTimeout(30_000);
+  const timeout = isServerlessRuntime() ? 20_000 : 30_000;
+  page.setDefaultTimeout(timeout);
+  await applyServerlessPageGuards(session.context, page);
 
   try {
-    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 30_000 });
+    await page.goto(url, { waitUntil: "domcontentloaded", timeout });
     await safeWait(page, 400);
-    const buffer = await page.screenshot({ fullPage: true, type: "png" });
+    const buffer = await page.screenshot({
+      fullPage: !isServerlessRuntime(),
+      type: "png",
+    });
     return Buffer.from(buffer);
   } finally {
     await page.close().catch(() => undefined);

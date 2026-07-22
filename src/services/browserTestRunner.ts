@@ -4,6 +4,7 @@ import {
   applyServerlessPageGuards,
   friendlyBrowserError,
   safeWait,
+  serverlessExploreLimits,
 } from "@/lib/pageSafety";
 import { getViewportConfig } from "@/lib/validation";
 import type { ViewportId } from "@/lib/constants";
@@ -20,8 +21,6 @@ import type {
   TestStepKind,
 } from "@/types/browserTest";
 
-const STEP_TIMEOUT = 20_000;
-const TOTAL_TIMEOUT = 180_000;
 const NAV_RETRIES = 2;
 const ACTION_RETRIES = 2;
 const RETRY_DELAY_MS = 500;
@@ -96,9 +95,10 @@ async function retry<T>(
 }
 
 async function navigateWithRetry(page: Page, url: string): Promise<void> {
+  const navTimeout = serverlessExploreLimits().navTimeout;
   await retry(NAV_RETRIES, async (attempt) => {
     const waitUntil = attempt === 1 ? "domcontentloaded" : "load";
-    await page.goto(url, { waitUntil, timeout: 30_000 });
+    await page.goto(url, { waitUntil, timeout: navTimeout });
     await safeWait(page, 500);
   });
 }
@@ -140,6 +140,7 @@ async function resolveLocator(page: Page, target: string) {
 }
 
 async function executeAction(page: Page, action: BrowserTestAction): Promise<string> {
+  const STEP_TIMEOUT = serverlessExploreLimits().stepTimeout;
   switch (action.type) {
     case "click": {
       const locator = await resolveLocator(page, action.target);
@@ -256,6 +257,10 @@ export async function runBrowserTest(options: {
     recordVideoDir: recordVideo ? videoDir : undefined,
   });
   const { context } = session;
+
+  const limits = serverlessExploreLimits();
+  const STEP_TIMEOUT = limits.stepTimeout;
+  const TOTAL_TIMEOUT = limits.totalTimeout;
 
   const page = await context.newPage();
   page.setDefaultTimeout(STEP_TIMEOUT);
