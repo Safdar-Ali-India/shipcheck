@@ -35,6 +35,7 @@ export function BrowserTestTool() {
   const [shareUrl, setShareUrl] = useState<string | undefined>(undefined);
   const [showDemo, setShowDemo] = useState(false);
   const [history, setHistory] = useState<BrowserTestHistoryItem[]>([]);
+  const [historyError, setHistoryError] = useState<string | null>(null);
   const [quickSites, setQuickSites] = useState<string[]>(["https://www.google.com"]);
 
   useEffect(() => {
@@ -44,11 +45,23 @@ export function BrowserTestTool() {
   const loadHistory = async () => {
     try {
       const response = await fetch("/api/browser-test", { method: "GET" });
-      if (!response.ok) return;
-      const data = (await response.json()) as { reports?: BrowserTestHistoryItem[] };
+      const data = (await response.json()) as {
+        reports?: BrowserTestHistoryItem[];
+        error?: string;
+        retryAfterSec?: number;
+      };
+      if (!response.ok) {
+        const retry =
+          typeof data.retryAfterSec === "number" && data.retryAfterSec > 0
+            ? ` Try again in ~${data.retryAfterSec}s.`
+            : "";
+        setHistoryError((data.error ?? "Could not load recent runs.") + retry);
+        return;
+      }
+      setHistoryError(null);
       setHistory(data.reports ?? []);
     } catch {
-      // ignore history load failures
+      setHistoryError("Could not load recent runs.");
     }
   };
 
@@ -86,10 +99,17 @@ export function BrowserTestTool() {
         error?: string;
         planner?: string;
         shareUrl?: string;
+        retryAfterSec?: number;
       };
 
       if (!response.ok) {
-        throw new Error(data.error ?? "Test run failed");
+        const retry =
+          response.status === 429 &&
+          typeof data.retryAfterSec === "number" &&
+          data.retryAfterSec > 0
+            ? ` Wait ~${data.retryAfterSec}s and try again.`
+            : "";
+        throw new Error((data.error ?? "Test run failed") + retry);
       }
 
       setReport(data);
@@ -121,8 +141,8 @@ export function BrowserTestTool() {
             <div>
               <CardTitle>Browser smoke test</CardTitle>
               <CardDescription>
-                Paste any URL — ShipCheck auto-explores pages, fills safe forms, records
-                video, and returns a step-by-step report. Free, no signup.
+                Paste any URL — ShipCheck auto-explores pages, fills safe forms, and returns
+                a step-by-step report with screenshots. Free, no signup.
               </CardDescription>
             </div>
           </div>
@@ -187,8 +207,8 @@ export function BrowserTestTool() {
           </div>
 
           <p className="text-xs text-zinc-500">
-            Auto mode: visits up to 5 pages · fills safe forms (skips login/payment) · video +
-            network + console logs
+            Auto mode: explores a few pages · fills safe forms (skips login/payment) ·
+            screenshots + network + console logs. Video when running locally.
           </p>
 
           <details className="rounded-lg border border-zinc-200 dark:border-zinc-800">
@@ -301,7 +321,11 @@ export function BrowserTestTool() {
           <CardDescription>Open past reports or copy share links.</CardDescription>
         </CardHeader>
         <CardContent>
-          {history.length === 0 ? (
+          {historyError ? (
+            <p className="text-sm text-amber-700 dark:text-amber-300" role="status">
+              {historyError}
+            </p>
+          ) : history.length === 0 ? (
             <p className="text-sm text-zinc-500">No runs yet. Start your first browser test.</p>
           ) : (
             <div className="space-y-2">
