@@ -36,6 +36,7 @@ export function BrowserTestTool() {
   const [showDemo, setShowDemo] = useState(false);
   const [history, setHistory] = useState<BrowserTestHistoryItem[]>([]);
   const [historyError, setHistoryError] = useState<string | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   const [quickSites, setQuickSites] = useState<string[]>(["https://www.google.com"]);
 
   useEffect(() => {
@@ -128,6 +129,13 @@ export function BrowserTestTool() {
     setShareUrl(undefined);
     setShowDemo(true);
     document.getElementById("sample-report")?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  const copyHistoryLink = (id: string) => {
+    const absolute = `${window.location.origin}/reports/${id}`;
+    void navigator.clipboard.writeText(absolute);
+    setCopiedId(id);
+    window.setTimeout(() => setCopiedId((current) => (current === id ? null : current)), 1500);
   };
 
   return (
@@ -326,7 +334,21 @@ export function BrowserTestTool() {
               {historyError}
             </p>
           ) : history.length === 0 ? (
-            <p className="text-sm text-zinc-500">No runs yet. Start your first browser test.</p>
+            <div className="space-y-3">
+              <p className="text-sm text-zinc-500">
+                No runs yet. Paste a URL above and run a smoke test — reports show up here.
+              </p>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                disabled={loading || !url.trim()}
+                onClick={() => void runTest({ url: url.trim(), mode: "auto", viewport })}
+              >
+                <Sparkles className="h-4 w-4" />
+                Run first test
+              </Button>
+            </div>
           ) : (
             <div className="space-y-2">
               {history.map((item) => (
@@ -350,6 +372,13 @@ export function BrowserTestTool() {
                     >
                       {item.status}
                     </span>
+                    <button
+                      type="button"
+                      onClick={() => copyHistoryLink(item.id)}
+                      className="text-xs font-medium text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
+                    >
+                      {copiedId === item.id ? "Copied" : "Copy link"}
+                    </button>
                     <a
                       href={`/reports/${item.id}`}
                       target="_blank"

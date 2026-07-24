@@ -93,6 +93,7 @@ export function TestReportViewer({
   const [consoleFilter, setConsoleFilter] = useState<string>("all");
   const [networkFilter, setNetworkFilter] = useState("");
   const [copied, setCopied] = useState(false);
+  const [copiedLogs, setCopiedLogs] = useState<"console" | "network" | null>(null);
 
   const activeStep = report.steps[activeStepIndex] ?? report.steps[0];
   const passed = report.status === "pass";
@@ -141,8 +142,10 @@ export function TestReportViewer({
     }
   };
 
-  const copyLogs = (data: unknown) => {
+  const copyLogs = (data: unknown, kind: "console" | "network") => {
     void navigator.clipboard.writeText(JSON.stringify(data, null, 2));
+    setCopiedLogs(kind);
+    window.setTimeout(() => setCopiedLogs((current) => (current === kind ? null : current)), 1500);
   };
 
   const copyShareUrl = () => {
@@ -358,10 +361,10 @@ export function TestReportViewer({
                 ))}
                 <button
                   type="button"
-                  onClick={() => copyLogs(filteredConsole)}
+                  onClick={() => copyLogs(filteredConsole, "console")}
                   className="ml-auto text-xs text-zinc-500 hover:text-white"
                 >
-                  Copy
+                  {copiedLogs === "console" ? "Copied" : "Copy"}
                 </button>
               </div>
               {filteredConsole.length === 0 ? (
@@ -402,10 +405,10 @@ export function TestReportViewer({
                 />
                 <button
                   type="button"
-                  onClick={() => copyLogs(filteredNetwork)}
+                  onClick={() => copyLogs(filteredNetwork, "network")}
                   className="text-xs text-zinc-500 hover:text-white"
                 >
-                  Copy
+                  {copiedLogs === "network" ? "Copied" : "Copy"}
                 </button>
               </div>
               {filteredNetwork.length === 0 ? (
