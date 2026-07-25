@@ -2,6 +2,7 @@ import { createHash } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { executeBrowserTestRequest } from "@/lib/browserTestExecution";
 import { extractCiToken, isCiAuthorized } from "@/lib/ciAuth";
+import { friendlyBrowserError } from "@/lib/pageSafety";
 import { sendNotification } from "@/lib/notifications";
 import { enforcePublicQuota, withQuotaHeaders } from "@/lib/requestQuota";
 import { ciHookRequestSchema } from "@/lib/validation";
@@ -23,33 +24,27 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized CI hook token" }, { status: 401 });
   }
 
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
+
+  const parsed = ciHookRequestSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: parsed.error.issues[0]?.message ?? "Invalid request" },
+      { status: 400 },
+    );
+  }
+
   const quota = enforcePublicQuota(
     request.headers,
     "ciHook",
     providedToken ? tokenIdentity(providedToken) : undefined,
   );
   if (!quota.ok) return quota.response;
-
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    return withQuotaHeaders(
-      NextResponse.json({ error: "Invalid JSON body" }, { status: 400 }),
-      quota.decision,
-    );
-  }
-
-  const parsed = ciHookRequestSchema.safeParse(body);
-  if (!parsed.success) {
-    return withQuotaHeaders(
-      NextResponse.json(
-        { error: parsed.error.issues[0]?.message ?? "Invalid request" },
-        { status: 400 },
-      ),
-      quota.decision,
-    );
-  }
 
   try {
     const { report, planner, shareUrl } = await executeBrowserTestRequest(parsed.data);
@@ -75,7 +70,7 @@ export async function POST(request: NextRequest) {
       quota.decision,
     );
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Browser test failed";
+    const message = friendlyBrowserError(error);
     return withQuotaHeaders(
       NextResponse.json({ error: message }, { status: 400 }),
       quota.decision,

@@ -19,29 +19,23 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const quota = enforcePublicQuota(request.headers, "browserTest");
-  if (!quota.ok) return quota.response;
-
   let body: unknown;
   try {
     body = await request.json();
   } catch {
-    return withQuotaHeaders(
-      NextResponse.json({ error: "Invalid JSON body" }, { status: 400 }),
-      quota.decision,
-    );
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
   const parsed = browserTestRequestSchema.safeParse(body);
   if (!parsed.success) {
-    return withQuotaHeaders(
-      NextResponse.json(
-        { error: parsed.error.issues[0]?.message ?? "Invalid request" },
-        { status: 400 },
-      ),
-      quota.decision,
+    return NextResponse.json(
+      { error: parsed.error.issues[0]?.message ?? "Invalid request" },
+      { status: 400 },
     );
   }
+
+  const quota = enforcePublicQuota(request.headers, "browserTest");
+  if (!quota.ok) return quota.response;
 
   try {
     const { report, planner, shareUrl } = await executeBrowserTestRequest(parsed.data);
