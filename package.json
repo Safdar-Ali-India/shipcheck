@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
+    "reschedule-blog": "node scripts/reschedule-blog-posts.mjs",
     "format": "prettier --write .",
     "postinstall": "npx playwright install chromium || true"
   },

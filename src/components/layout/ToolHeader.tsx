@@ -26,12 +26,15 @@ export function ToolHeader() {
         </Link>
 
         <nav className="hidden items-center gap-4 text-sm text-zinc-600 dark:text-zinc-400 sm:flex">
-          <a href="#ai-test" className="hover:text-violet-600 dark:hover:text-violet-400">
+          <Link href="/#ai-test" className="hover:text-violet-600 dark:hover:text-violet-400">
             AI test
-          </a>
-          <a href="#visual-diff" className="hover:text-violet-600 dark:hover:text-violet-400">
+          </Link>
+          <Link href="/#visual-diff" className="hover:text-violet-600 dark:hover:text-violet-400">
             Visual diff
-          </a>
+          </Link>
+          <Link href="/blog" className="hover:text-violet-600 dark:hover:text-violet-400">
+            Blog
+          </Link>
         </nav>
 
         <Button

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { EXTERNAL_LINKS, FOOTER_LINKS } from "@/lib/links";
 import { BRAND } from "@/lib/constants";
 
@@ -31,9 +32,15 @@ export function SiteFooter() {
         </p>
 
         <nav
-          className="mt-4 flex items-center justify-center gap-4"
+          className="mt-4 flex flex-wrap items-center justify-center gap-4"
           aria-label="Footer links"
         >
+          <Link
+            href="/blog"
+            className="text-sm text-zinc-500 hover:text-violet-600 dark:hover:text-violet-400"
+          >
+            Blog
+          </Link>
           {FOOTER_LINKS.map((link) => (
             <a
               key={link.href}

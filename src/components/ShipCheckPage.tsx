@@ -1,5 +1,6 @@
 import { CompareTool } from "@/components/compare/CompareTool";
 import { BrowserTestTool } from "@/components/browser-test/BrowserTestTool";
+import { BlogSpotlight } from "@/components/blog/BlogSpotlight";
 import { ToolHeader } from "@/components/layout/ToolHeader";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { SeoSection } from "@/components/seo/SeoSection";
@@ -60,6 +61,7 @@ export function ShipCheckPage() {
         </section>
       </main>
 
+      <BlogSpotlight />
       <FeatureCards />
       <UseCasesSection />
       <SeoSection />
