@@ -585,12 +585,13 @@ export async function runAutoSiteTest(options: {
   const host = new URL(options.url).hostname.replace(/^www\./, "");
   const failed = stepResults.filter((s) => s.status === "fail").length;
   const passed = stepResults.filter((s) => s.status === "pass").length;
+  const captures = hasVideo ? "screenshots and video" : "screenshots";
 
   return {
     id: reportId,
-    title: `${host} auto test — explore pages, fill forms, record video`,
+    title: `${host} auto test — explore pages, fill forms, ${hasVideo ? "record video" : "capture screenshots"}`,
     url: options.url,
-    instructions: `Auto-discovered test: visit up to ${limits.maxPages} pages, fill safe forms, capture screenshots and video.`,
+    instructions: `Auto-discovered test: visit up to ${limits.maxPages} pages, fill safe forms, capture ${captures}.`,
     viewport: options.viewport,
     status: overallStatus,
     summary:
