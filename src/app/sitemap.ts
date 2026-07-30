@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { getNativeBlogPosts } from "@/data/blog-posts";
+import { getPublishInstant } from "@/lib/blog-schedule";
 import { SITE_URL } from "@/lib/constants";
 
 export const dynamic = "force-dynamic";
@@ -22,7 +23,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     },
     ...native.map((post) => ({
       url: `${SITE_URL}${post.href}`,
-      lastModified: new Date(post.publishedAt),
+      lastModified: new Date(getPublishInstant(post.publishedAt)),
       changeFrequency: "monthly" as const,
       priority: 0.7,
     })),
