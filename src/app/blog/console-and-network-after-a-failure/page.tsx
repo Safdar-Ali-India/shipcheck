@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { getPostByHref } from "@/data/blog-posts";
+import { ArticleByline } from "@/components/blog/ArticleByline";
 import { PostNav } from "@/components/blog/PostNav";
 import { requirePublishedBlogPost } from "@/lib/require-published-blog-post";
 import { BRAND, SITE_URL } from "@/lib/constants";
@@ -46,7 +47,7 @@ export default function ConsoleAfterFailurePage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <p className="text-sm text-zinc-500">{post.date}</p>
+      <ArticleByline date={post.date} minutes={post.minutes} />
       <h1 className="mt-2 text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
         {post.title}
       </h1>
