@@ -76,6 +76,12 @@ describe("SEO helpers", () => {
   });
 });
 
+describe("invalid publishedAt", () => {
+  it("rejects strings that are not a date", () => {
+    expect(() => getPublishInstant("tomorrow")).toThrow(/Invalid publishedAt/);
+  });
+});
+
 describe("scheduleSlotAt0900Ist", () => {
   it("starts Tue/Thu 09:00 IST from 2026-06-02", () => {
     expect(scheduleSlotAt0900Ist(0)).toBe("2026-06-02T09:00:00+05:30");
