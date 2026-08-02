@@ -19,14 +19,15 @@ export function renderBlogRss(posts: BlogPost[], now: Date = new Date()): string
       <link>${escapeXml(url)}</link>
       <guid>${escapeXml(url)}</guid>
       <pubDate>${new Date(toOpenGraphPublishedTime(post.publishedAt)).toUTCString()}</pubDate>
-      <description>${escapeXml(post.excerpt)}</description>
+      <description>${escapeXml(post.excerpt)}${post.minutes ? ` (${post.minutes} min read)` : ""}</description>
     </item>`;
     })
     .join("\n");
 
   return `<?xml version="1.0" encoding="UTF-8"?>
-<rss version="2.0">
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
+    <atom:link href="${SITE_URL}/blog/feed.xml" rel="self" type="application/rss+xml"/>
     <title>${escapeXml(BRAND.name)} blog</title>
     <link>${SITE_URL}/blog</link>
     <description>Notes on free browser smoke tests and visual diffs.</description>
