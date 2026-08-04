@@ -49,6 +49,7 @@ export default function BlogIndexPage() {
             <>
               <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">
                 {post.date}
+                {post.minutes ? ` · ${post.minutes} min` : ""}
                 {post.source === "dev"
                   ? " · DEV"
                   : post.source === "medium"

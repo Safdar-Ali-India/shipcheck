@@ -17,6 +17,8 @@ export type BlogPost = {
   /** On-site article when true; otherwise external Medium/DEV/etc. */
   native?: boolean;
   source?: "shipcheck" | "medium" | "dev";
+  /** Rough reading time in minutes for native posts. */
+  minutes?: number;
 };
 
 /**
@@ -34,6 +36,7 @@ export const blogPosts: BlogPost[] = [
     publishedAt: "2026-06-10",
     native: true,
     source: "shipcheck",
+    minutes: 4,
   },
   {
     title: "Visual diffs without the flake tax",
@@ -44,6 +47,7 @@ export const blogPosts: BlogPost[] = [
     publishedAt: "2026-06-17",
     native: true,
     source: "shipcheck",
+    minutes: 4,
   },
   {
     title: "Plain-English browser tests on ShipCheck",
@@ -74,6 +78,7 @@ export const blogPosts: BlogPost[] = [
     publishedAt: "2026-07-28T09:00:00+05:30",
     native: true,
     source: "shipcheck",
+    minutes: 4,
   },
   {
     title: "Safe form filling in automated smoke tests",
@@ -84,6 +89,7 @@ export const blogPosts: BlogPost[] = [
     publishedAt: "2026-07-30T09:00:00+05:30",
     native: true,
     source: "shipcheck",
+    minutes: 4,
   },
   {
     title: "Shareable test reports without accounts",
@@ -94,6 +100,7 @@ export const blogPosts: BlogPost[] = [
     publishedAt: "2026-08-04T09:00:00+05:30",
     native: true,
     source: "shipcheck",
+    minutes: 3,
   },
   {
     title: "Public quotas for free browser testing tools",
@@ -104,6 +111,7 @@ export const blogPosts: BlogPost[] = [
     publishedAt: "2026-08-06T09:00:00+05:30",
     native: true,
     source: "shipcheck",
+    minutes: 4,
   },
 ];
 
