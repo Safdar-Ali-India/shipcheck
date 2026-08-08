@@ -29,7 +29,10 @@ export function BlogSpotlight() {
           const isExternal = !post.native;
           const card = (
             <>
-              <p className="text-xs uppercase tracking-wide text-zinc-500">{post.date}</p>
+              <p className="text-xs uppercase tracking-wide text-zinc-500">
+                {post.date}
+                {post.minutes ? ` · ${post.minutes} min` : ""}
+              </p>
               <h3 className="mt-2 text-base font-semibold text-zinc-900 group-hover:text-violet-700 dark:text-zinc-50 dark:group-hover:text-violet-300">
                 {post.title}
               </h3>
