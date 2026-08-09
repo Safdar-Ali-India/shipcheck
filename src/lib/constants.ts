@@ -89,6 +89,11 @@ export const FAQ_ITEMS = [
       "Yes. ShipCheck also includes a pixel-perfect visual diff tool — upload two images or paste two URLs to detect UI changes.",
   },
   {
+    question: "Is there a blog?",
+    answer:
+      "Yes. Notes on smoke tests and visual diffs are published at /blog on Tuesday and Thursday at 09:00 IST. A post stays unavailable until that time. The feed is /blog/feed.xml.",
+  },
+  {
     question: "What sites can I test?",
     answer:
       "Any public HTTP/HTTPS website. In production, private IPs and localhost are blocked for security. When running ShipCheck locally (npm run dev), localhost URLs are allowed so you can test apps on your machine.",
