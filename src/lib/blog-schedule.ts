@@ -75,6 +75,12 @@ export function scheduleSlotAt0900Ist(slotIndex: number): string {
   return `${yy}-${mm}-${dd}T09:00:00${IST_OFFSET}`;
 }
 
+export function estimateReadingMinutes(text: string, wordsPerMinute = 200): number {
+  const words = text.trim().split(/\s+/).filter(Boolean).length;
+  if (words === 0) return 1;
+  return Math.max(1, Math.round(words / wordsPerMinute));
+}
+
 export function displayMonthYear(publishedAt: string): string {
   return new Intl.DateTimeFormat("en-US", {
     month: "short",
