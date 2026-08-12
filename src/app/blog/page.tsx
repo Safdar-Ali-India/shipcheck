@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { getNativeBlogPosts, getPublishedPosts } from "@/data/blog-posts";
+import { estimateReadingMinutes } from "@/lib/blog-schedule";
 import { BRAND, SITE_URL } from "@/lib/constants";
 
 export const dynamic = "force-dynamic";
@@ -52,7 +53,7 @@ export default function BlogIndexPage() {
             <>
               <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">
                 {post.date}
-                {post.minutes ? ` · ${post.minutes} min` : ""}
+                {` · ${post.minutes ?? estimateReadingMinutes(post.excerpt)} min`}
                 {post.source === "dev"
                   ? " · DEV"
                   : post.source === "medium"
