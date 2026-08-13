@@ -143,6 +143,17 @@ export function getPostByHref(
   };
 }
 
+/** Newer and older native posts that are already published. */
+export function getAdjacentPosts(href: string, now: Date = new Date()) {
+  const native = getNativeBlogPosts(now);
+  const index = native.findIndex((post) => post.href === href);
+  if (index < 0) return { newer: undefined, older: undefined };
+  return {
+    newer: native[index - 1],
+    older: native[index + 1],
+  };
+}
+
 /** Homepage: one native + one DEV + one Medium when each is published. */
 export function getSpotlightPosts(now: Date = new Date()): BlogPost[] {
   const published = getPublishedPosts(now);
