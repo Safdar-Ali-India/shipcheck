@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { getNativeBlogPosts, getPublishedPosts } from "@/data/blog-posts";
+import { blogIndexJsonLd } from "@/lib/blogJsonLd";
 import { estimateReadingMinutes } from "@/lib/blog-schedule";
 import { BRAND, SITE_URL } from "@/lib/constants";
 
@@ -17,16 +18,7 @@ export default function BlogIndexPage() {
   const posts = getPublishedPosts();
   const native = getNativeBlogPosts();
 
-  const itemList = {
-    "@context": "https://schema.org",
-    "@type": "ItemList",
-    itemListElement: native.map((post, index) => ({
-      "@type": "ListItem",
-      position: index + 1,
-      url: `${SITE_URL}${post.href}`,
-      name: post.title,
-    })),
-  };
+  const itemList = blogIndexJsonLd(native);
 
   return (
     <>
