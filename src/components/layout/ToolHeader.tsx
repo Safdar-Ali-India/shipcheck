@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Moon, Sun, Ship } from "lucide-react";
 import { useTheme } from "next-themes";
 import { BRAND } from "@/lib/constants";
@@ -9,7 +10,9 @@ import { Button } from "@/components/ui/button";
 
 export function ToolHeader() {
   const { resolvedTheme, setTheme } = useTheme();
+  const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
+  const onBlog = pathname.startsWith("/blog");
 
   useEffect(() => {
     setMounted(true);
@@ -38,7 +41,15 @@ export function ToolHeader() {
           >
             Visual diff
           </Link>
-          <Link href="/blog" className="hover:text-violet-600 dark:hover:text-violet-400">
+          <Link
+            href="/blog"
+            aria-current={onBlog ? "page" : undefined}
+            className={
+              onBlog
+                ? "font-medium text-violet-700 dark:text-violet-300"
+                : "hover:text-violet-600 dark:hover:text-violet-400"
+            }
+          >
             Blog
           </Link>
         </nav>
