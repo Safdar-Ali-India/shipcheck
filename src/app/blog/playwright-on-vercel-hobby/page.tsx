@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { getPostByHref } from "@/data/blog-posts";
+import { PostNav } from "@/components/blog/PostNav";
 import { PublishedBlogLink } from "@/components/blog/PublishedBlogLink";
 import { requirePublishedBlogPost } from "@/lib/require-published-blog-post";
 import { BRAND, SITE_URL } from "@/lib/constants";
@@ -74,6 +75,7 @@ export default function PlaywrightVercelPage() {
           so one IP cannot burn the whole budget.
         </p>
       </div>
+      <PostNav href={POST_HREF} />
     </article>
   );
 }
