@@ -378,6 +378,7 @@ export function BrowserTestTool() {
                     <button
                       type="button"
                       onClick={() => copyHistoryLink(item.id)}
+                      aria-label={`Copy share link for ${item.title}`}
                       className="text-xs font-medium text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
                     >
                       {copiedId === item.id ? "Copied" : "Copy link"}
