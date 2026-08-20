@@ -113,6 +113,17 @@ export const blogPosts: BlogPost[] = [
     source: "shipcheck",
     minutes: 4,
   },
+  {
+    title: "Smoke-test desktop, tablet, and mobile separately",
+    href: "/blog/viewport-smoke-checks",
+    excerpt:
+      "A flow that passes at 1280px can still hide the button you need at 390px. Run the same URL in three viewports.",
+    date: "Aug 2026",
+    publishedAt: "2026-08-20T09:00:00+05:30",
+    native: true,
+    source: "shipcheck",
+    minutes: 4,
+  },
 ];
 
 export type SeoBlogPost = BlogPost & {
