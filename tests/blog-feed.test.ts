@@ -8,6 +8,8 @@ describe("blog RSS", () => {
     const xml = buildPublishedBlogRss(now);
     expect(xml).toContain("/blog/catch-broken-flows-before-customers");
     expect(xml).toContain("/blog/visual-diffs-without-flake-tax");
+    expect(xml).toContain('rel="self"');
+    expect(xml).toContain("4 min read");
     expect(xml).not.toContain("/blog/playwright-on-vercel-hobby");
     expect(xml).not.toContain("dev.to");
   });
@@ -16,6 +18,12 @@ describe("blog RSS", () => {
     const xml = buildPublishedBlogRss(new Date("2026-08-20T09:00:00+05:30"));
     expect(xml).toContain("/blog/viewport-smoke-checks");
     expect(xml).toContain("Thu, 20 Aug 2026");
+  });
+
+  it("lists a self link and the minute estimate when a post has one", () => {
+    const xml = buildPublishedBlogRss(new Date("2026-08-20T09:00:00+05:30"));
+    expect(xml).toContain('rel="self"');
+    expect(xml).toContain("min read");
   });
 });
 
