@@ -43,6 +43,7 @@ export function SiteFooter() {
           </Link>
           <a
             href="/blog/feed.xml"
+            aria-label="Blog RSS feed"
             className="text-sm text-zinc-500 hover:text-violet-600 dark:hover:text-violet-400"
           >
             RSS
