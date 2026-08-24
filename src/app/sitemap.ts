@@ -17,7 +17,9 @@ export default function sitemap(): MetadataRoute.Sitemap {
     },
     {
       url: `${SITE_URL}/blog`,
-      lastModified: new Date(),
+      lastModified: native[0]
+        ? new Date(getPublishInstant(native[0].publishedAt))
+        : new Date(),
       changeFrequency: "weekly",
       priority: 0.8,
     },
