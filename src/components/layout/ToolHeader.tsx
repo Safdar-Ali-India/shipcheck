@@ -25,11 +25,17 @@ export function ToolHeader() {
           <span>{BRAND.name}</span>
         </Link>
 
-        <nav className="hidden items-center gap-4 text-sm text-zinc-600 dark:text-zinc-400 sm:flex">
-          <Link href="/#ai-test" className="hover:text-violet-600 dark:hover:text-violet-400">
+        <nav className="flex items-center gap-3 text-sm text-zinc-600 dark:text-zinc-400 sm:gap-4">
+          <Link
+            href="/#ai-test"
+            className="hidden hover:text-violet-600 dark:hover:text-violet-400 sm:inline"
+          >
             AI test
           </Link>
-          <Link href="/#visual-diff" className="hover:text-violet-600 dark:hover:text-violet-400">
+          <Link
+            href="/#visual-diff"
+            className="hidden hover:text-violet-600 dark:hover:text-violet-400 sm:inline"
+          >
             Visual diff
           </Link>
           <Link href="/blog" className="hover:text-violet-600 dark:hover:text-violet-400">
