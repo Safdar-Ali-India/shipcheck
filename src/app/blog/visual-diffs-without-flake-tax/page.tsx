@@ -3,6 +3,7 @@ import { getPostByHref } from "@/data/blog-posts";
 import { ArticleByline } from "@/components/blog/ArticleByline";
 import { PostNav } from "@/components/blog/PostNav";
 import { PublishedBlogLink } from "@/components/blog/PublishedBlogLink";
+import { articleJsonLd } from "@/lib/blogJsonLd";
 import { requirePublishedBlogPost } from "@/lib/require-published-blog-post";
 import { BRAND, SITE_URL } from "@/lib/constants";
 
@@ -31,16 +32,7 @@ export default function VisualDiffsPage() {
   const post = requirePublishedBlogPost(POST_HREF);
   const seo = getPostByHref(POST_HREF)!;
 
-  const jsonLd = {
-    "@context": "https://schema.org",
-    "@type": "Article",
-    headline: post.title,
-    datePublished: seo.seoDatePublished,
-    description: post.excerpt,
-    author: { "@type": "Person", name: BRAND.author },
-    publisher: { "@type": "Organization", name: BRAND.name, url: SITE_URL },
-    mainEntityOfPage: `${SITE_URL}${POST_HREF}`,
-  };
+  const jsonLd = articleJsonLd(seo);
 
   return (
     <article>
