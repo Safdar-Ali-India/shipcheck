@@ -124,6 +124,17 @@ export const blogPosts: BlogPost[] = [
     source: "shipcheck",
     minutes: 4,
   },
+  {
+    title: "Read the console and network log after a failed step",
+    href: "/blog/console-and-network-after-a-failure",
+    excerpt:
+      "A red step is the start of the report, not the end. Console errors and the failing request usually explain it.",
+    date: "Sep 2026",
+    publishedAt: "2026-09-03T09:00:00+05:30",
+    native: true,
+    source: "shipcheck",
+    minutes: 3,
+  },
 ];
 
 export type SeoBlogPost = BlogPost & {
