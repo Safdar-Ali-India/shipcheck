@@ -19,11 +19,11 @@ const LOADING_STEPS = [
 ] as const;
 
 function getQuickSites(): string[] {
-  return ["https://www.google.com"];
+  return ["https://example.com"];
 }
 
 export function BrowserTestTool() {
-  const [url, setUrl] = useState<string>("https://www.google.com");
+  const [url, setUrl] = useState<string>("https://example.com");
   const [instructions, setInstructions] = useState<string>("");
   const [viewport, setViewport] = useState<ViewportId>("desktop");
   const [loading, setLoading] = useState(false);
@@ -37,7 +37,7 @@ export function BrowserTestTool() {
   const [history, setHistory] = useState<BrowserTestHistoryItem[]>([]);
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [quickSites, setQuickSites] = useState<string[]>(["https://www.google.com"]);
+  const [quickSites, setQuickSites] = useState<string[]>(["https://example.com"]);
 
   useEffect(() => {
     setQuickSites(getQuickSites());
