@@ -135,6 +135,17 @@ export const blogPosts: BlogPost[] = [
     source: "shipcheck",
     minutes: 3,
   },
+  {
+    title: "Trigger a smoke test from CI without a dashboard login",
+    href: "/blog/ci-hook-without-a-dashboard",
+    excerpt:
+      "A token, a URL, and a JSON body are enough to fail a pipeline when the smoke test fails.",
+    date: "Sep 2026",
+    publishedAt: "2026-09-10T09:00:00+05:30",
+    native: true,
+    source: "shipcheck",
+    minutes: 4,
+  },
 ];
 
 export type SeoBlogPost = BlogPost & {
