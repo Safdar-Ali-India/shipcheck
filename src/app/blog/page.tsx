@@ -39,7 +39,10 @@ export default function BlogIndexPage() {
       </h1>
       <p className="mt-3 text-zinc-600 dark:text-zinc-400">
         Practical notes on browser smoke tests, visual diffs, and free public tooling —
-        published on a Tue/Thu cadence.
+        published on a Tue/Thu cadence.{" "}
+        <a href="/blog/feed.xml" className="font-medium text-violet-700 hover:underline dark:text-violet-400">
+          RSS
+        </a>
       </p>
 
       <ul className="mt-10 space-y-8">
