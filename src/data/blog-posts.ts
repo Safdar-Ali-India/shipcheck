@@ -146,6 +146,17 @@ export const blogPosts: BlogPost[] = [
     source: "shipcheck",
     minutes: 4,
   },
+  {
+    title: "When to raise the visual diff threshold",
+    href: "/blog/when-to-raise-the-diff-threshold",
+    excerpt:
+      "0.10 is a starting point. Raise it for anti-aliasing, not for a layout bug you hope to ignore.",
+    date: "Sep 2026",
+    publishedAt: "2026-09-22T09:00:00+05:30",
+    native: true,
+    source: "shipcheck",
+    minutes: 3,
+  },
 ];
 
 export type SeoBlogPost = BlogPost & {
