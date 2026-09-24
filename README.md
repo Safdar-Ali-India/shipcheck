@@ -7,7 +7,8 @@ It combines:
 - **Visual diff testing** (pixel-by-pixel screenshot comparison)
 
 **Live:** [shipcheck-seven.vercel.app](https://shipcheck-seven.vercel.app)  
-**Author:** [Safdar Ali](https://safdarali.in)
+**Author:** [Safdar Ali](https://safdarali.in)  
+**Blog:** `/blog` (Tue/Thu, 09:00 IST). Posts stay unpublished until `publishedAt`. RSS: `/blog/feed.xml`
 
 ## UI Preview
 
