@@ -6,7 +6,6 @@ import {
   safeWait,
   serverlessExploreLimits,
 } from "@/lib/pageSafety";
-import { getViewportConfig } from "@/lib/validation";
 import type { ViewportId } from "@/lib/constants";
 import { cleanupOldReports, saveReportVideo } from "@/lib/reportStorage";
 import { getVideoSessionDir } from "@/lib/tmpPaths";
@@ -243,7 +242,6 @@ export async function runBrowserTest(options: {
   const reportId = crypto.randomUUID();
   const startedAt = new Date().toISOString();
   const testStart = Date.now();
-  const config = getViewportConfig(options.viewport);
   const recordVideo = shouldRecordVideo();
   const videoDir = getVideoSessionDir(reportId);
   if (recordVideo) {

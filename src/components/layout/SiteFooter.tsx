@@ -41,6 +41,12 @@ export function SiteFooter() {
           >
             Blog
           </Link>
+          <a
+            href="/blog/feed.xml"
+            className="text-sm text-zinc-500 hover:text-violet-600 dark:hover:text-violet-400"
+          >
+            RSS
+          </a>
           {FOOTER_LINKS.map((link) => (
             <a
               key={link.href}
